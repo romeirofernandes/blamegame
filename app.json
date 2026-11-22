@@ -24,6 +24,13 @@
       "description": "A live party game for the group chat.",
       "favicon": "./assets/app-icon.png"
     },
-    "plugins": ["expo-font"]
+    "plugins": [
+      "expo-font",
+      ["expo-image-picker", {
+        "photosPermission": "Choose a profile photo to share with players in your Blame Game room.",
+        "cameraPermission": false,
+        "microphonePermission": false
+      }]
+    ]
   }
 }

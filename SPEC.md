@@ -4,7 +4,7 @@ Blame Game turns a group-chat poll into a live party game. The payoff is finding
 
 ## First playtest
 
-- A host picks a five-round deck and a vote mode, creates a private room, and shares a code or invite link. Players sign in and pick a nickname for the room. A room holds 3–12 players and locks when the host starts.
+- A host picks a five-round deck and a vote mode, creates a private room, and shares a code or invite link. Players sign in and pick a nickname for the room. They can use their generated avatar or upload a room photo. Self-votes are off by default and the host can turn them on. A room holds 3–12 players and locks when the host starts.
 - Voting decks ask everyone to pick one player. The Spotlight deck asks for short answers about a different player each round. Everyone may submit once or pass. The host can reveal after at least one submission or pass, and advances the next round. If the host leaves, another connected player takes over.
 - Before the reveal, everyone sees the submission count and their own submission status. Anonymous mode shows totals and unattributed answers after the reveal, including for the host. Named mode also shows who picked each player or wrote each answer.
 - Players can try a solo demo with simulated friends. The final round ends with a session recap and a way home.
@@ -19,7 +19,7 @@ Use [Quiplash 3](https://www.jackboxgames.com/games/quiplash-3) as the reference
 
 ## Implementation
 
-Expo React Native runs on iOS, Android, and the browser. NativeWind provides shared styling. A Cloudflare Worker serves the app and routes WebSockets to a SQLite-backed Durable Object per room, following Typiks. The Durable Object owns room membership, the host role, round transitions, and a separate view of state for each player. Hidden submissions are excluded from broadcast data. An opaque player token resumes a room following a reconnect or app restart. Rooms expire after two hours of inactivity. Firebase email accounts are required to play. The Worker verifies Firebase ID tokens before accepting room commands and binds reconnect tokens to the verified account. A public release needs a deployed HTTPS/WSS endpoint and signed native builds.
+Expo React Native runs on iOS, Android, and the browser. NativeWind provides shared styling. A Cloudflare Worker serves the app and routes WebSockets to a SQLite-backed Durable Object per room, following Typiks. The Durable Object owns room membership, the host role, round transitions, and a separate view of state for each player. Hidden submissions are excluded from broadcast data. An opaque player token resumes a room following a reconnect or app restart. A disconnected player stays in the roster with their submitted votes and avatar. The host can reveal without waiting for that player, and hosting passes to a connected player if the host disconnects. Rooms expire after two hours of inactivity. Firebase email accounts are required to play. The Worker verifies Firebase ID tokens before accepting room commands and binds reconnect tokens to the verified account. A public release needs a deployed HTTPS/WSS endpoint and signed native builds.
 
 ## Playtest questions
 

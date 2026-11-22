@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Platform, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
@@ -11,10 +10,6 @@ import { getDeck } from './decks';
 import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
 import { Avatar, Body, Button, hapticSelect, Label, PromptCard, Tap, Title } from './ui';
-
-const easeOut = Easing.bezier(0.23, 1, 0.32, 1);
-const revealIn = FadeInDown.duration(250).easing(easeOut).withInitialValues({ transform: [{ translateY: 8 }] });
-const revealReduced = FadeIn.duration(140).easing(easeOut);
 
 export function RoundScreen({ room, host, demo, act, leave, disabled }: {
   room: RoomView;
@@ -31,6 +26,7 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
   const deck = getDeck(room.deckId)!;
   const card = room.card!;
   const player = (id: string) => room.players.find((person) => person.id === id)!;
+  const offlineCount = room.players.filter((person) => person.online === false).length;
 
   useEffect(() => {
     if (!committing || !room.hasSubmitted) return;
@@ -86,7 +82,7 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
       <PromptCard question={card.question} color={deck.color} label={card.kind === 'pick' ? 'Most likely to' : 'Spotlight round'} />
 
       {room.phase === 'reveal' ? (
-        <View className="gap-5">
+        <View className="shrink-0 gap-5">
           <Reveal room={room} />
           {host
             ? <Button onPress={() => act({ type: 'next' })} disabled={disabled}>{room.round === room.total ? 'See recap' : 'Next round'}</Button>
@@ -105,11 +101,14 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
               {card.kind === 'pick' ? (
                 <View className="gap-2">
                   <Label>Pick one person</Label>
-                  {room.players.map((person) => (
-                    <Tap key={person.id} label={person.id === room.me ? `${person.name} (you)` : person.name} selected={choice === person.id} onPress={() => { hapticSelect(); setChoice(person.id); }} disabled={disabled}>
+                  {room.players.filter((person) => room.allowSelfVote || person.id !== room.me).map((person) => (
+                    <Tap key={person.id} label={`${person.name}${person.id === room.me ? ' (you)' : ''}${person.online === false ? ' (offline)' : ''}`} selected={choice === person.id} onPress={() => { hapticSelect(); setChoice(person.id); }} disabled={disabled}>
                       <View className={`flex-row items-center gap-3 rounded-[16px] border px-3 py-2.5 ${choice === person.id ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
-                        <Avatar player={person} />
-                        <Body className="flex-1">{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
+                        <OnlineAvatar player={person} />
+                        <View className="flex-1">
+                          <Body>{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
+                          {person.online === false && <Label className="text-peach">Offline</Label>}
+                        </View>
                         {choice === person.id && <HugeiconsIcon icon={CheckmarkCircle02Icon} size={22} color={colors.limeStrong} />}
                       </View>
                     </Tap>
@@ -135,8 +134,9 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
           <View className="gap-2">
             <Label className="text-center tracking-[1px]" accessibilityLiveRegion="polite">
               {room.submitted} of {room.players.length} ready
+              {offlineCount > 0 && ` · ${offlineCount} offline`}
             </Label>
-            {host && room.submitted > 0 && (
+            {host && (room.canReveal ?? room.submitted > 0) && (
               <Button tone={room.hasSubmitted ? 'primary' : 'secondary'} onPress={() => act({ type: 'reveal' })} disabled={disabled}>Reveal results</Button>
             )}
           </View>
@@ -147,31 +147,36 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
 }
 
 function Reveal({ room }: { room: RoomView }) {
-  const reduced = useReducedMotion();
   const player = (id: string) => room.players.find((person) => person.id === id)!;
   const { picks, answers } = room.result!;
   const leaders = picks.filter((pick) => pick.count === picks[0]?.count);
 
   return (
-    <Animated.View entering={reduced ? revealReduced : revealIn} className="gap-3">
+    <View className="shrink-0 gap-3">
       {!!picks.length && (
         <>
           <Label className="text-lime-strong">{leaders.length > 1 ? 'It’s a tie' : 'Most blamed'}</Label>
           <Title className="text-[43px] leading-[45px]">{leaders.map((pick) => player(pick.playerId).name).join(' & ')}</Title>
           <View className="gap-2">
-            {picks.map((pick) => (
-              <View key={pick.playerId} className="gap-2 rounded-[17px] border border-line bg-panel p-3">
-                <View className="flex-row items-center gap-3">
-                  <Avatar player={player(pick.playerId)} />
-                  <Body className="flex-1">{player(pick.playerId).name}</Body>
-                  <Text className="font-boldface text-sm text-lilac-strong">{pick.count} {pick.count === 1 ? 'vote' : 'votes'}</Text>
+            {picks.map((pick) => {
+              const person = player(pick.playerId);
+              return (
+                <View key={pick.playerId} className="gap-2 rounded-[17px] border border-line bg-panel p-3">
+                  <View className="flex-row items-center gap-3">
+                    <OnlineAvatar player={person} />
+                    <View className="flex-1">
+                      <Body>{person.name}</Body>
+                      {person.online === false && <Label className="text-peach">Offline</Label>}
+                    </View>
+                    <Text className="font-boldface text-sm text-lilac-strong">{pick.count} {pick.count === 1 ? 'vote' : 'votes'}</Text>
+                  </View>
+                  <View className="h-1.5 overflow-hidden rounded-full bg-line">
+                    <View className="h-full rounded-full bg-lilac" style={{ width: `${(pick.count / room.players.length) * 100}%` }} />
+                  </View>
+                  {pick.voters && <Body className="text-sm leading-5 text-muted">Picked by {pick.voters.map((id) => player(id).name).join(', ')}</Body>}
                 </View>
-                <View className="h-1.5 overflow-hidden rounded-full bg-line">
-                  <View className="h-full rounded-full bg-lilac" style={{ width: `${(pick.count / room.players.length) * 100}%` }} />
-                </View>
-                {pick.voters && <Body className="text-sm leading-5 text-muted">Picked by {pick.voters.map((id) => player(id).name).join(', ')}</Body>}
-              </View>
-            ))}
+              );
+            })}
           </View>
         </>
       )}
@@ -187,6 +192,18 @@ function Reveal({ room }: { room: RoomView }) {
         </>
       )}
       {!picks.length && !answers.length && <Body className="text-muted">No responses this round.</Body>}
-    </Animated.View>
+    </View>
+  );
+}
+
+function OnlineAvatar({ player }: { player: RoomView['players'][number] }) {
+  return (
+    <View className="relative">
+      <Avatar player={player} />
+      <View
+        aria-hidden
+        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-panel ${player.online === false ? 'bg-peach' : 'bg-lime-strong'}`}
+      />
+    </View>
   );
 }

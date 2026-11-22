@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { GameRoom } from '../src/room-hub.js';
 
 class MemoryStorage {
@@ -41,6 +42,7 @@ const route = (socket, code, creating = false, authUid = crypto.randomUUID()) =>
 
 describe('RoomHub WebSocket protocol', () => {
   test('persists private room state and resumes the same player after hibernation', async () => {
+    const validAvatar = `data:image/jpeg;base64,${Buffer.from(await readFile(new URL('./fixtures/player-avatar.jpg', import.meta.url))).toString('base64')}`;
     const storage = new MemoryStorage();
     const state = new FakeState(storage);
     const host = new FakeSocket();
@@ -59,8 +61,10 @@ describe('RoomHub WebSocket protocol', () => {
       name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'),
     }));
     const code = host.lastState().code;
-    await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('b') }));
-    await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('c') }));
+    await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('b'), avatar: validAvatar }));
+    await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('c'), avatar: 'data:image/png;base64,ZmFrZQ==' }));
+    expect(host.lastState().allowSelfVote).toBe(false);
+    expect(host.lastState().players.find((player) => player.name === 'Sam').avatar).toBeUndefined();
     await hub.webSocketMessage(host, command('start'));
     await hub.webSocketMessage(guest, command('submit', {
       round: 1, submission: { kind: 'pick', value: host.lastState().me },
@@ -79,6 +83,7 @@ describe('RoomHub WebSocket protocol', () => {
     await recoveredHub.webSocketMessage(resumed, command('resume', { code, token: token('b') }));
 
     expect(resumed.lastState()).toMatchObject({ code, me: guest.lastState().me, phase: 'vote', hasSubmitted: true });
+    expect(resumed.lastState().players.find((player) => player.id === guest.lastState().me).avatar).toBe(validAvatar);
     expect(resumed.lastState().result).toBeUndefined();
   });
 
@@ -106,6 +111,91 @@ describe('RoomHub WebSocket protocol', () => {
     await hub.webSocketMessage(host, command('leave'));
 
     expect(guest.lastState().host).toBe(guest.lastState().me);
+  });
+
+  test('accepts the host self-vote setting when creating a room', async () => {
+    const state = new FakeState();
+    const host = new FakeSocket();
+    state.sockets.add(host);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'UVWXY', true);
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('h'), allowSelfVote: true,
+    }));
+
+    expect(host.lastState().allowSelfVote).toBe(true);
+  });
+
+  test('requires three online players to start and permits the start after reconnect', async () => {
+    const state = new FakeState();
+    const host = new FakeSocket();
+    const guest = new FakeSocket();
+    const third = new FakeSocket();
+    state.sockets.add(host);
+    state.sockets.add(guest);
+    state.sockets.add(third);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'Z2345', true);
+    route(guest, 'Z2345');
+    route(third, 'Z2345');
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('l'),
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('m') }));
+    await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('n') }));
+    await hub.webSocketClose(third);
+
+    await hub.webSocketMessage(host, command('start'));
+    expect(host.messages.at(-1)).toMatchObject({ type: 'error', message: 'You need at least 3 players online.' });
+    expect(host.lastState().phase).toBe('lobby');
+
+    const resumedThird = new FakeSocket();
+    state.sockets.add(resumedThird);
+    route(resumedThird, code, false, third.attachment.authUid);
+    await hub.webSocketMessage(resumedThird, command('resume', { code, token: token('n') }));
+    expect(host.lastState().players[2].online).toBe(true);
+    await hub.webSocketMessage(host, command('start'));
+    expect(host.lastState().phase).toBe('vote');
+  });
+
+  test('marks disconnected nonvoters and lets the host reveal an empty round', async () => {
+    const state = new FakeState();
+    const host = new FakeSocket();
+    const guest = new FakeSocket();
+    const third = new FakeSocket();
+    state.sockets.add(host);
+    state.sockets.add(guest);
+    state.sockets.add(third);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'PQRST', true);
+    route(guest, 'PQRST');
+    route(third, 'PQRST');
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('e'),
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('f') }));
+    await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('g') }));
+    await hub.webSocketMessage(host, command('start'));
+
+    await hub.webSocketClose(third);
+    expect(host.lastState()).toMatchObject({
+      phase: 'vote', submitted: 0, canReveal: true,
+      players: [{ online: true }, { online: true }, { online: false }],
+    });
+    await hub.webSocketMessage(host, command('reveal'));
+    expect(host.lastState().result).toEqual({ picks: [], answers: [] });
+
+    await hub.webSocketClose(host);
+    expect(guest.lastState().host).toBe(guest.lastState().me);
+    expect(guest.lastState().players[0].online).toBe(false);
   });
 
   test('rejects a code collision so the client can reconnect to /ws/new', async () => {

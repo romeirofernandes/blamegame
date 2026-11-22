@@ -5,7 +5,7 @@ export const decks = [
     id: 'group-chat', name: 'Group Chat', description: 'Read receipts, road trips, and lore.',
     label: 'THE CLASSIC', color: '#c8adff',
     cards: [
-      { kind: 'pick', question: 'Who would become a group chat meme?' },
+      { kind: 'pick', question: 'Who would live-text their own surprise party?' },
       { kind: 'pick', question: 'Who says “five minutes” while still in bed?' },
       { kind: 'pick', question: 'Who says “quick story” and starts at the beginning of their life?' },
       { kind: 'pick', question: 'Who could turn a grocery run into a three-hour side quest?' },
@@ -32,6 +32,28 @@ export const decks = [
       { kind: 'pick', question: 'Who knows exactly what to order for everyone at the table?' },
       { kind: 'pick', question: 'Who would show up at the airport with snacks and a handmade sign?' },
       { kind: 'pick', question: 'Who would you trust to plan a day that feels exactly like you?' },
+    ],
+  },
+  {
+    id: 'shared-holiday', name: 'Shared Holiday', description: 'One booking, six opinions, and the wrong gate.',
+    label: 'TRIP LORE', color: '#a9cdfd',
+    cards: [
+      { kind: 'pick', question: 'Who would book the perfect Airbnb for the wrong weekend?' },
+      { kind: 'pick', question: 'Who would pack three outfits for the flight and forget their charger?' },
+      { kind: 'pick', question: 'Who would come back from a souvenir shop with the owner’s entire life story?' },
+      { kind: 'pick', question: 'Who would say “we can walk it” and accidentally make it a hike?' },
+      { kind: 'pick', question: 'Who would make the trip spreadsheet and still be last to the gate?' },
+    ],
+  },
+  {
+    id: 'fake-jobs', name: 'Fake Jobs', description: 'Give your friends jobs they’d be suspiciously good at.',
+    label: 'WEIRDLY QUALIFIED', color: '#ffe184',
+    cards: [
+      { kind: 'pick', question: 'Who could get a refund from a vending machine?' },
+      { kind: 'pick', question: 'Who would be the best at naming nail polish shades?' },
+      { kind: 'pick', question: 'Who would last the longest as a museum guard in a room full of buttons marked “Do not touch”?' },
+      { kind: 'pick', question: 'Who would run a lost-and-found and come away with three new friends?' },
+      { kind: 'pick', question: 'Who could write a five-star review for a genuinely terrible chair?' },
     ],
   },
   {

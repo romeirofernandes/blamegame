@@ -1,10 +1,12 @@
-import { addPlayer, applyAction, createRoom, viewRoom } from '../../src/game.ts';
+import { addPlayer, applyAction, createRoom, MIN_PLAYERS, viewRoom } from '../../src/game.ts';
 import { getDeck } from '../../src/decks.ts';
+import { MAX_PLAYER_AVATAR_LENGTH } from '../../src/avatar.ts';
 import { verifyFirebaseIdToken } from './firebase-auth.js';
 
 const ROOM_STATE_KEY = 'room';
 const ROOM_TTL_MS = 2 * 60 * 60_000;
 const MAX_MESSAGE_BYTES = 9_216;
+const MAX_ENTRY_MESSAGE_BYTES = MAX_MESSAGE_BYTES + MAX_PLAYER_AVATAR_LENGTH;
 
 function socketData(socket) {
   try {
@@ -74,15 +76,29 @@ export class GameRoom {
     return this.queue;
   }
 
+  webSocketClose(socket) {
+    this.queue = this.queue.catch(() => {}).then(() => this.handleDisconnect(socket));
+    return this.queue;
+  }
+
+  webSocketError(socket) {
+    try { socket.close(1011, 'Connection error'); } catch {}
+    return this.webSocketClose(socket);
+  }
+
   async handleMessage(socket, raw) {
     await this.ready;
     try {
       const body = decodeMessage(raw);
-      if (new TextEncoder().encode(body).byteLength > MAX_MESSAGE_BYTES) throw new Error('Request is too large.');
+      const bodyBytes = new TextEncoder().encode(body).byteLength;
+      if (bodyBytes > MAX_ENTRY_MESSAGE_BYTES) throw new Error('Request is too large.');
       const command = JSON.parse(body);
       if (!command || typeof command !== 'object' || typeof command.type !== 'string') {
         throw new Error('Invalid request.');
       }
+      const entryWithAvatar = (command.type === 'create' || command.type === 'join') && typeof command.avatar === 'string';
+      const maxBytes = entryWithAvatar ? MAX_ENTRY_MESSAGE_BYTES : MAX_MESSAGE_BYTES;
+      if (bodyBytes > maxBytes) throw new Error('Request is too large.');
       await this.handleCommand(socket, command);
     } catch (cause) {
       this.sendError(socket, cause instanceof Error ? cause.message : 'Something went wrong.');
@@ -126,6 +142,10 @@ export class GameRoom {
       this.sendError(socket, 'Join the room first.', true);
       return;
     }
+    if (command.type === 'start' && this.session.room.phase === 'lobby' &&
+      this.connectedPlayerIds().size < MIN_PLAYERS) {
+      throw new Error('You need at least 3 players online.');
+    }
     applyAction(this.session.room, playerId, command);
     this.session.touched = Date.now();
     await this.persistAndSchedule();
@@ -149,11 +169,13 @@ export class GameRoom {
         return;
       }
       if (typeof command.name !== 'string' || !getDeck(command.deckId) ||
-        (command.mode !== 'anonymous' && command.mode !== 'named')) {
+        (command.mode !== 'anonymous' && command.mode !== 'named') ||
+        (command.allowSelfVote !== undefined && typeof command.allowSelfVote !== 'boolean')) {
         throw new Error('Choose a deck and vote mode.');
       }
       const id = crypto.randomUUID();
-      const room = createRoom(code, id, command.name, command.deckId, command.mode);
+      const room = createRoom(code, id, command.name, command.deckId, command.mode,
+        command.allowSelfVote ?? false, command.avatar);
       this.session = { room, tokens: new Map([[command.token, { playerId: id, authUid }]]), touched: Date.now() };
       this.attach(socket, id, authUid);
       await this.persistAndSchedule();
@@ -186,11 +208,12 @@ export class GameRoom {
       }
       if (typeof command.name !== 'string') throw new Error('Enter your name.');
       playerId = crypto.randomUUID();
-      addPlayer(this.session.room, playerId, command.name);
+      addPlayer(this.session.room, playerId, command.name, command.avatar);
       this.session.tokens.set(command.token, { playerId, authUid });
     }
 
     this.attach(socket, playerId, authUid);
+    this.recoverHost();
     this.session.touched = Date.now();
     await this.persistAndSchedule();
     this.broadcast();
@@ -218,7 +241,10 @@ export class GameRoom {
       }
       if (this.session.room.players.length === 0) this.session = null;
       else {
-        if (this.session.room.host === playerId) this.session.room.host = this.session.room.players[0].id;
+        if (this.session.room.host === playerId) {
+          const online = this.connectedPlayerIds();
+          this.session.room.host = this.session.room.players.find((player) => online.has(player.id))?.id ?? this.session.room.players[0].id;
+        }
         this.session.touched = Date.now();
       }
       await this.persistAndSchedule();
@@ -226,27 +252,50 @@ export class GameRoom {
       return;
     }
 
-    if (this.session.room.host === playerId) {
-      const connected = new Set(this.state.getWebSockets()
-        .map((peer) => socketData(peer))
-        .filter((data) => data.code === code && data.playerId)
-        .map((data) => data.playerId));
-      const nextHost = this.session.room.players.find((player) => player.id !== playerId && connected.has(player.id))?.id;
-      if (nextHost) {
-        this.session.room.host = nextHost;
-        this.session.touched = Date.now();
-        await this.persistAndSchedule();
-        this.broadcast();
-      }
+    this.recoverHost();
+    this.session.touched = Date.now();
+    await this.persistAndSchedule();
+    this.broadcast();
+  }
+
+  async handleDisconnect(socket) {
+    await this.ready;
+    const { code, playerId, authUid } = socketData(socket);
+    setSocketData(socket, { authUid: authUid ?? null });
+    if (!this.session || code !== this.session.room.code || !playerId) return;
+    const hostChanged = this.recoverHost();
+    if (hostChanged) {
+      this.session.touched = Date.now();
+      await this.persistAndSchedule();
     }
+    this.broadcast();
+  }
+
+  connectedPlayerIds() {
+    return new Set(this.state.getWebSockets()
+      .filter((socket) => socket.readyState === 1)
+      .map((socket) => socketData(socket))
+      .filter((data) => data.code === this.session?.room.code && data.playerId && data.authUid)
+      .map((data) => data.playerId));
+  }
+
+  recoverHost() {
+    if (!this.session) return false;
+    const online = this.connectedPlayerIds();
+    if (online.has(this.session.room.host)) return false;
+    const nextHost = this.session.room.players.find((player) => online.has(player.id));
+    if (!nextHost) return false;
+    this.session.room.host = nextHost.id;
+    return true;
   }
 
   broadcast() {
     if (!this.session) return;
+    const online = this.connectedPlayerIds();
     for (const socket of this.state.getWebSockets()) {
       const { code, playerId, authUid } = socketData(socket);
-      if (code !== this.session.room.code || !playerId || !authUid) continue;
-      this.send(socket, { type: 'state', room: viewRoom(this.session.room, playerId) });
+      if (code !== this.session.room.code || !playerId || !authUid || !online.has(playerId)) continue;
+      this.send(socket, { type: 'state', room: viewRoom(this.session.room, playerId, online) });
     }
   }
 

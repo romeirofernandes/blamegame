@@ -1,8 +1,9 @@
 import { getDeck, type Card } from './decks';
+import { validatePlayerAvatar } from './avatar';
 
 export type Mode = 'anonymous' | 'named';
 type Phase = 'lobby' | 'vote' | 'reveal' | 'recap';
-export type Player = { id: string; name: string; color: number };
+export type Player = { id: string; name: string; color: number; avatar?: string };
 type Submission = { kind: 'pick' | 'write'; value: string } | { kind: 'pass' };
 type Result = {
   picks: { playerId: string; count: number; voters?: string[] }[];
@@ -14,6 +15,7 @@ export type Room = {
   host: string;
   deckId: string;
   mode: Mode;
+  allowSelfVote: boolean;
   phase: Phase;
   players: Player[];
   rounds: Round[];
@@ -26,12 +28,14 @@ export type RoomView = {
   deckId: string;
   mode: Mode;
   phase: Phase;
-  players: Player[];
+  players: (Player & { online: boolean })[];
   round: number;
   total: number;
   card?: Card;
   submitted: number;
   hasSubmitted: boolean;
+  allowSelfVote: boolean;
+  canReveal: boolean;
   result?: Result;
   recap?: { question: string; leaders: string[] }[];
 };
@@ -41,8 +45,11 @@ export type Action =
   | { type: 'submit'; round: number; submission: Submission };
 
 export type Command = Action
-  | { type: 'create'; name: string; deckId: string; mode: Mode; token: string }
-  | { type: 'join'; name: string; code: string; token: string }
+  | {
+    type: 'create'; name: string; deckId: string; mode: Mode; token: string;
+    allowSelfVote?: boolean; avatar?: string;
+  }
+  | { type: 'join'; name: string; code: string; token: string; avatar?: string }
   | { type: 'resume'; code: string; token: string }
   | { type: 'leave' };
 export type Message =
@@ -52,13 +59,21 @@ export type Message =
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 12;
 
-export function createRoom(code: string, id: string, name: string, deckId: string, mode: Mode): Room {
-  const room: Room = { code, host: id, deckId, mode, phase: 'lobby', players: [], rounds: [] };
-  addPlayer(room, id, name);
+export function createRoom(
+  code: string,
+  id: string,
+  name: string,
+  deckId: string,
+  mode: Mode,
+  allowSelfVote = false,
+  avatar?: string,
+): Room {
+  const room: Room = { code, host: id, deckId, mode, allowSelfVote, phase: 'lobby', players: [], rounds: [] };
+  addPlayer(room, id, name, avatar);
   return room;
 }
 
-export function addPlayer(room: Room, id: string, value: string) {
+export function addPlayer(room: Room, id: string, value: string, avatar?: string) {
   const name = value.trim().replace(/\s+/g, ' ');
   if (room.phase !== 'lobby') throw new Error('This game has already started.');
   if (room.players.length >= MAX_PLAYERS) throw new Error('This room is full.');
@@ -66,7 +81,11 @@ export function addPlayer(room: Room, id: string, value: string) {
   if (room.players.some((player) => player.name.toLowerCase() === name.toLowerCase())) {
     throw new Error('Someone already has that name.');
   }
-  room.players.push({ id, name, color: room.players.length % 6 });
+  const playerAvatar = validatePlayerAvatar(avatar);
+  room.players.push({
+    id, name, color: room.players.length % 6,
+    ...(playerAvatar ? { avatar: playerAvatar } : {}),
+  });
 }
 
 function beginRound(room: Room) {
@@ -99,6 +118,9 @@ export function applyAction(room: Room, playerId: string, action: Action) {
     if (submission.kind === 'pick' && !room.players.some((player) => player.id === value)) {
       throw new Error('Choose someone in the room.');
     }
+    if (submission.kind === 'pick' && !room.allowSelfVote && value === playerId) {
+      throw new Error("You can't vote for yourself.");
+    }
     if (submission.kind === 'write' && (!value || value.length > 120)) {
       throw new Error('Use between 1 and 120 characters.');
     }
@@ -111,7 +133,7 @@ export function applyAction(room: Room, playerId: string, action: Action) {
     beginRound(room);
     return;
   }
-  if (action.type === 'reveal' && room.phase === 'vote' && round?.submissions.size) {
+  if (action.type === 'reveal' && room.phase === 'vote' && round) {
     room.phase = 'reveal';
     return;
   }
@@ -144,12 +166,18 @@ function results(room: Room, round: Round): Result {
   return { picks, answers };
 }
 
-export function viewRoom(room: Room, me: string): RoomView {
+export function viewRoom(room: Room, me: string, onlinePlayerIds?: Iterable<string>): RoomView {
   const round = room.rounds.at(-1);
+  const online = onlinePlayerIds ? new Set(onlinePlayerIds) : new Set(room.players.map((player) => player.id));
   return {
     code: room.code, me, host: room.host, deckId: room.deckId, mode: room.mode, phase: room.phase,
-    players: room.players, round: room.rounds.length, total: getDeck(room.deckId)!.cards.length,
+    players: room.players.map((player) => ({ ...player, online: online.has(player.id) })),
+    round: room.rounds.length, total: getDeck(room.deckId)!.cards.length,
     card: round?.card, submitted: round?.submissions.size ?? 0, hasSubmitted: round?.submissions.has(me) ?? false,
+    allowSelfVote: room.allowSelfVote ?? false,
+    canReveal: me === room.host && room.phase === 'vote' && !!round && (
+      round.submissions.size > 0 || room.players.some((player) => !online.has(player.id))
+    ),
     result: room.phase === 'reveal' && round ? results(room, round) : undefined,
     recap: room.phase === 'recap' ? room.rounds.map((item) => {
       const { picks } = results(room, item);

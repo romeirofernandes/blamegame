@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Platform, Pressable, Text, View, type TextProps } from 'react-native';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Image, Platform, Pressable, Text, View, type TextProps } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
@@ -7,7 +7,8 @@ import SparklesIcon from '@hugeicons/core-free-icons/SparklesIcon';
 import * as Haptics from 'expo-haptics';
 import { twMerge } from 'tailwind-merge';
 import { useAppearance } from './appearance';
-import type { Player } from './game';
+import Svg, { Path, Rect } from 'react-native-svg';
+import { DITHER_AVATAR_SIZE, DITHER_OFFSET_Y, DITHER_SCALE, ditherAvatar } from './dither-avatar';
 
 export function Body({ className = '', ...props }: TextProps) {
   return <Text className={twMerge('font-body text-base leading-body text-cloud', className)} {...props} />;
@@ -78,12 +79,28 @@ export function Button({ children, onPress, tone = 'primary', disabled, arrow = 
   );
 }
 
-const avatarColors = ['#e2fc67', '#ffb199', '#c8adff', '#9eead9', '#ffb9da', '#ffe184'];
-
-export function Avatar({ player }: { player: Player }) {
+export function Avatar({ player }: { player: { id: string; avatar?: string } }) {
+  const [failedPhoto, setFailedPhoto] = useState<string>();
+  const pattern = useMemo(() => ditherAvatar(player.id), [player.id]);
   return (
-    <View className="size-10 items-center justify-center rounded-full" style={{ backgroundColor: avatarColors[player.color] }}>
-      <Text className="font-boldface text-base text-ink">{Array.from(player.name)[0].toUpperCase()}</Text>
+    <View aria-hidden className="size-10 shrink-0 overflow-hidden rounded-full">
+      {player.avatar && player.avatar !== failedPhoto ? (
+        <Image
+          source={{ uri: player.avatar }}
+          className="size-10"
+          onError={() => setFailedPhoto(player.avatar)}
+        />
+      ) : (
+        <Svg width={40} height={40} viewBox={`0 0 ${DITHER_AVATAR_SIZE} ${DITHER_AVATAR_SIZE}`}>
+          <Rect width={DITHER_AVATAR_SIZE} height={DITHER_AVATAR_SIZE} fill={pattern.fill} />
+          <Path
+            d={pattern.path}
+            fill="none"
+            stroke={pattern.stroke}
+            transform={`translate(0,${DITHER_OFFSET_Y}) scale(${DITHER_SCALE})`}
+          />
+        </Svg>
+      )}
     </View>
   );
 }

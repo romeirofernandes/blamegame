@@ -31,8 +31,10 @@ export function demoAction(room: Room, action: Action) {
     const round = next.rounds.length;
     const kind = next.rounds.at(-1)!.card.kind;
     friends.forEach((name, index) => {
+      const targetIndex = (round - 1 + (index === 3 ? 1 : 0)) % friends.length;
+      const pickIndex = friends[targetIndex] === name ? (targetIndex + 1) % friends.length : targetIndex;
       const value = kind === 'pick'
-        ? friends[(round - 1 + (index === 3 ? 1 : 0)) % friends.length]
+        ? friends[pickIndex]
         : sampleAnswers[round - 1][index];
       applyAction(next, name, { type: 'submit', round, submission: { kind, value } });
     });

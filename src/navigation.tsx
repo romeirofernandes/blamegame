@@ -1,5 +1,12 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import Cards01Icon from "@hugeicons/core-free-icons/Cards01Icon";
@@ -29,12 +36,43 @@ export function GameTabBar({
   onChange: (destination: GameDestination) => void;
 }) {
   const { colors } = useAppearance();
+  const [barWidth, setBarWidth] = useState(0);
+  const selectedIndex = destinations.findIndex(({ id }) => id === active);
+  const reducedMotion = useReducedMotion();
+  const position = useSharedValue(selectedIndex);
+  const tabWidth = Math.max(0, (barWidth - 32) / destinations.length);
+  const highlightStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: position.value * tabWidth + (tabWidth - 16) / 2 }],
+  }), [tabWidth]);
+
+  useEffect(() => {
+    position.value = reducedMotion
+      ? selectedIndex
+      : withTiming(selectedIndex, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [position, reducedMotion, selectedIndex]);
+
   return (
     <SafeAreaView edges={["bottom"]} className="border-t border-line/40 bg-panel">
       <View
         accessibilityRole="tablist"
         className="mx-auto w-full max-w-[480px] flex-row px-4 py-1"
+        onLayout={({ nativeEvent }) => setBarWidth(nativeEvent.layout.width)}
       >
+        <Animated.View
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          className="absolute h-0.5 w-4 rounded-full"
+          style={[
+            {
+              left: 16,
+              top: 8,
+              backgroundColor: colors.lilacStrong,
+            },
+            highlightStyle,
+          ]}
+        />
         {destinations.map(({ id, label, icon }) => {
           const selected = active === id;
           return (
@@ -42,6 +80,7 @@ export function GameTabBar({
               key={id}
               accessibilityRole="tab"
               accessibilityLabel={label}
+              aria-selected={selected}
               accessibilityState={{ selected }}
               className="min-h-14 flex-1 items-center justify-center gap-1 rounded-xl active:opacity-75 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
               onPress={() => {
@@ -52,7 +91,7 @@ export function GameTabBar({
             >
               <View
                 aria-hidden
-                className={`h-0.5 w-4 rounded-full ${selected ? "bg-lilac-strong" : "bg-transparent"}`}
+                className="h-0.5 w-4 rounded-full bg-transparent"
               />
               <HugeiconsIcon
                 accessible={false}
@@ -168,21 +207,26 @@ export function DecksScreen({
 
 export function SettingsScreen({
   appearanceSlot,
+  avatarSlot,
   accountSlot,
 }: {
   appearanceSlot: ReactNode;
+  avatarSlot?: ReactNode;
   accountSlot: ReactNode;
 }) {
   return (
-    <View className="gap-7">
+    <View className="gap-6">
       <View>
         <Title className="text-[48px] leading-display">Settings</Title>
         <Body className="mt-2 max-w-[310px] text-muted">
-          Make the game feel like yours.
+          Choose a theme and manage your account.
         </Body>
       </View>
 
       <SettingsSection title="Appearance">{appearanceSlot}</SettingsSection>
+      {avatarSlot && (
+        <SettingsSection title="Avatar">{avatarSlot}</SettingsSection>
+      )}
       <SettingsSection title="Account">{accountSlot}</SettingsSection>
     </View>
   );

@@ -182,9 +182,25 @@ export function DoodleWallpaper() {
         height="100%"
         viewBox="0 0 390 844"
         preserveAspectRatio="xMidYMid slice"
-        opacity={0.14}
+        opacity={0.18}
       >
+        <G opacity={0.36} stroke="none">
+          <Circle cx={36} cy={278} r={24} fill={colors.promptStackAccent} />
+          <Circle cx={348} cy={326} r={30} fill={colors.peachFill} />
+          <Ellipse cx={83} cy={615} rx={34} ry={19} fill={colors.lilac} />
+          <Circle cx={323} cy={749} r={27} fill={colors.promptStackAccent} />
+          <Circle cx={192} cy={425} r={4} fill={colors.lime} />
+          <Circle cx={205} cy={425} r={2} fill={colors.peachFill} />
+        </G>
         <G fill="none" stroke={colors.doodle} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M103 58c7 4 12 4 19 0m-9-9v18" />
+          <Path d="m252 103 3 7 7 3-7 3-3 7-3-7-7-3 7-3z" />
+          <G transform="rotate(-8 331 292)">
+            <Circle cx={331} cy={292} r={13} />
+            <Circle cx={327} cy={289} r={1.2} fill={colors.doodle} />
+            <Circle cx={335} cy={289} r={1.2} fill={colors.doodle} />
+            <Path d="M327 296q4 4 8 0" />
+          </G>
           <G transform="rotate(-9 42 102)">
             <Rect x={18} y={83} width={55} height={36} rx={15} />
             <Path d="M31 118 25 129l17-10" />
@@ -240,6 +256,15 @@ export function DoodleWallpaper() {
             <Circle cx={336} cy={488} r={2} />
           </G>
           <Path d="m63 629 8 7 15-17m208 109 7 7m0-7-7 7" />
+          <Path d="M137 663c9-9 18-9 27 0s18 9 27 0 18-9 27 0" />
+          <G transform="rotate(7 287 690)">
+            <Rect x={265} y={674} width={43} height={31} rx={12} />
+            <Path d="M276 690h1m9 0h1m-9 7q4 3 8 0" />
+          </G>
+          <Path d="M344 548v21m-7-14h14m-12 8h10" />
+          <Circle cx={38} cy={454} r={2} fill={colors.doodle} />
+          <Circle cx={48} cy={449} r={1.5} fill={colors.doodle} />
+          <Circle cx={58} cy={454} r={2} fill={colors.doodle} />
           <Circle cx={263} cy={807} r={3} />
           <Circle cx={275} cy={807} r={3} />
           <Path d="M265 818q5 4 10 0" />
