@@ -170,6 +170,7 @@ export function DoodleWallpaper() {
   return (
     <View
       accessible={false}
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
