@@ -10,15 +10,14 @@ import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
 import { HugeiconsIcon } from '@hugeicons/react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import ArrowLeft01Icon from '@hugeicons/core-free-icons/ArrowLeft01Icon';
 import ArrowUpRight01Icon from '@hugeicons/core-free-icons/ArrowUpRight01Icon';
 import Cards01Icon from '@hugeicons/core-free-icons/Cards01Icon';
 import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
 import ComputerIcon from '@hugeicons/core-free-icons/ComputerIcon';
 import Copy01Icon from '@hugeicons/core-free-icons/Copy01Icon';
-import EyeIcon from '@hugeicons/core-free-icons/EyeIcon';
 import FlashIcon from '@hugeicons/core-free-icons/FlashIcon';
-import LockKeyIcon from '@hugeicons/core-free-icons/LockKeyIcon';
 import Message01Icon from '@hugeicons/core-free-icons/Message01Icon';
 import Moon02Icon from '@hugeicons/core-free-icons/Moon02Icon';
 import Sun03Icon from '@hugeicons/core-free-icons/Sun03Icon';
@@ -28,7 +27,7 @@ import VoteIcon from '@hugeicons/core-free-icons/VoteIcon';
 import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
 import { decks, getDeck } from './decks';
 import { DEMO_PLAYER, demoAction, newDemo } from './demo';
-import { MIN_PLAYERS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
+import { MIN_PLAYERS, MIN_ROUNDS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
 import { Body, Button, Field, GameSwitch, hapticSelect, Label, PresenceAvatar, Surface, Tap, Title } from './ui';
 import { PromptDeckStack } from './PromptDeckStack';
 import { useRoom, webOrigin } from './useRoom';
@@ -255,7 +254,7 @@ function GameApp() {
               <View className="gap-6">
                 <View>
                   <Title>{page === 'host' ? 'Host a game' : 'Join a game'}</Title>
-                  <Body className="mt-2 text-muted">{page === 'host' ? 'Choose a deck and decide what everyone sees at the reveal.' : 'Ask your host for the five-character room code.'}</Body>
+                  <Body className="mt-2 text-muted">{page === 'host' ? 'Choose a deck, round count, and what everyone sees at the reveal.' : 'Ask your host for the five-character room code.'}</Body>
                 </View>
                 {page === 'join' && (
                   <Field label="Room code" className="tracking-[4px]" value={code}
@@ -296,7 +295,7 @@ function GameApp() {
                         {(['anonymous', 'named'] as const).map((item) => (
                           <Tap key={item} className="flex-1" selected={mode === item} onPress={() => { hapticSelect(); setMode(item); }}>
                             <View className={`min-h-12 flex-row flex-wrap items-center justify-center gap-2 rounded-[14px] border px-2 py-2 ${mode === item ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
-                              <HugeiconsIcon icon={item === 'anonymous' ? LockKeyIcon : EyeIcon} color={mode === item ? colors.limeStrong : colors.muted} size={17} />
+                              <VisibilityIcon visible={item === 'named'} color={mode === item ? colors.limeStrong : colors.muted} />
                               <Text className={`font-boldface text-sm ${mode === item ? 'text-lime-strong' : 'text-muted'}`}>{item === 'anonymous' ? 'Anonymous' : 'Named'}</Text>
                             </View>
                           </Tap>
@@ -308,6 +307,37 @@ function GameApp() {
                           : mode === 'anonymous' ? 'The reveal shows answers and hides who wrote them.' : 'The reveal shows who wrote each answer.'}
                       </Body>
                     </View>
+                    <Surface className="gap-3 rounded-[18px] border border-line bg-panel p-4">
+                      <View className="flex-row items-center justify-between gap-3">
+                        <View className="flex-1 gap-1">
+                          <Text className="font-boldface text-base text-cloud">Rounds</Text>
+                          <Body className="text-sm leading-5 text-muted">Prompts are drawn without repeats.</Body>
+                        </View>
+                        <View className="flex-row items-center gap-3">
+                          <Tap
+                            label="Fewer rounds"
+                            disabled={roundCount <= MIN_ROUNDS}
+                            onPress={() => setRoundCount((count) => Math.max(MIN_ROUNDS, count - 1))}
+                            className="size-11 rounded-full border border-line bg-canvas"
+                          >
+                            <Text className="text-center font-boldface text-2xl text-cloud">−</Text>
+                          </Tap>
+                          <View className="min-w-12 items-center" accessibilityLiveRegion="polite">
+                            <Text className="font-display text-2xl text-cloud">{roundCount}</Text>
+                            <Label>rounds</Label>
+                          </View>
+                          <Tap
+                            label="More rounds"
+                            disabled={roundCount >= (getDeck(deck)?.cards.length ?? 1)}
+                            onPress={() => setRoundCount((count) => Math.min(getDeck(deck)?.cards.length ?? count, count + 1))}
+                            className="size-11 rounded-full border border-line bg-canvas"
+                          >
+                            <Text className="text-center font-boldface text-2xl text-cloud">+</Text>
+                          </Tap>
+                        </View>
+                      </View>
+                      <Label>Choose 1–{getDeck(deck)?.cards.length ?? 0} rounds</Label>
+                    </Surface>
                     {pickRounds && (
                       <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
                         <View className="flex-1 gap-1">
@@ -325,8 +355,9 @@ function GameApp() {
                 )}
                 {!online.available && <Body className="text-muted">This build has no room server. You can still play a solo demo.</Body>}
                 <Button disabled={!online.ready || !avatarOptions.ready || !name.trim() || online.pending || (page === 'join' && code.length !== 5)}
-                  onPress={() => online.send(page === 'host' ? { type: 'create', name, deckId: deck, mode, allowSelfVote, avatar: avatarOptions.avatar } :
-                    { type: 'join', name, code, avatar: avatarOptions.avatar })}>
+                  onPress={() => online.send(page === 'host'
+                    ? { type: 'create', name, deckId: deck, mode, allowSelfVote, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, roundCount }
+                    : { type: 'join', name, code, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant })}>
                   {online.pending ? 'Connecting…' : page === 'host' ? 'Create room' : 'Join room'}
                 </Button>
               </View>
@@ -339,6 +370,26 @@ function GameApp() {
   );
 }
 
+
+function VisibilityIcon({ visible, color }: { visible: boolean; color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" accessible={false}>
+      {visible ? (
+        <>
+          <Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+          <Circle cx={12} cy={12} r={3} />
+        </>
+      ) : (
+        <>
+          <Path d="M3 3l18 18" />
+          <Path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <Path d="M6.6 6.6A11 11 0 0 0 2 12s3.6 7 10 7a10.8 10.8 0 0 0 4.7-1.1" />
+          <Path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.8 15.8 0 0 1-3.1 3.5" />
+        </>
+      )}
+    </Svg>
+  );
+}
 
 const themes = [
   { id: 'system', label: 'System', icon: ComputerIcon },
@@ -401,7 +452,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
   return (
     <View className="gap-6">
       <View>
-        <Label className="mb-2 text-lilac-strong">{deck.name} · {room.mode} {deck.cards.some((card) => card.kind === 'pick') ? 'votes' : 'answers'}</Label>
+        <Label className="mb-2 text-lilac-strong">{deck.name} · {room.mode} · {room.total} rounds</Label>
         <Title>The lobby</Title>
         <Body className="mt-2 text-muted">Send your friends the code or invite link.</Body>
       </View>
