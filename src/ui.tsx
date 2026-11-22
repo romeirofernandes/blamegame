@@ -112,13 +112,7 @@ export function PromptCard({ question, label, color, hero = false }: {
 }) {
   const { colors: palette } = useAppearance();
   return (
-    <View className={hero ? 'relative mx-1 mt-2 pb-2' : 'relative'}>
-      {hero && (
-        <>
-          <View pointerEvents="none" className="absolute inset-x-3 bottom-0 top-4 -rotate-4 rounded-[25px] border" style={{ borderColor: palette.promptBorder, backgroundColor: palette.promptStack }} />
-          <View pointerEvents="none" className="absolute inset-x-2 bottom-1 top-2 rotate-3 rounded-[25px]" style={{ backgroundColor: palette.promptStackAccent }} />
-        </>
-      )}
+    <View className="relative">
       <Surface className={`overflow-hidden rounded-[25px] border-0 p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color ?? palette.lilac }}>
         <View className="flex-row items-center justify-between gap-2">
           <View className="rounded-full border border-ink/60 px-2.5 py-1.5">

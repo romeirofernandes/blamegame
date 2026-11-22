@@ -349,6 +349,11 @@ export function getDeck(id: string) {
   return decks.find((deck) => deck.id === id);
 }
 
+export function cycleDeckIndex(index: number, offset: number, count: number) {
+  if (count <= 0) return 0;
+  return ((index + offset) % count + count) % count;
+}
+
 export function drawCards(deckId: string, count: number, random: () => number = Math.random): Card[] {
   const deck = getDeck(deckId);
   if (!deck) throw new Error('Choose a deck.');

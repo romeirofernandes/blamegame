@@ -29,7 +29,8 @@ import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
 import { decks, getDeck } from './decks';
 import { DEMO_PLAYER, demoAction, newDemo } from './demo';
 import { MIN_PLAYERS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
-import { Body, Button, Field, GameSwitch, hapticSelect, Label, PresenceAvatar, PromptCard, Surface, Tap, Title } from './ui';
+import { Body, Button, Field, GameSwitch, hapticSelect, Label, PresenceAvatar, Surface, Tap, Title } from './ui';
+import { PromptDeckStack } from './PromptDeckStack';
 import { useRoom, webOrigin } from './useRoom';
 import { RoundScreen } from './RoundScreen';
 import { DecksScreen, GameTabBar, SettingsScreen, type GameDestination } from './navigation';
@@ -130,7 +131,7 @@ function GameApp() {
             keyboardShouldPersistTaps="handled"
             className="flex-1"
             showsVerticalScrollIndicator={false}
-            contentContainerClassName="grow shrink-0 px-6 pb-8 pt-5"
+            contentContainerClassName={`grow shrink-0 px-6 pt-5 ${showTabs && destination === 'play' ? 'pb-2' : 'pb-8'}`}
           >
             <View className={`min-h-12 flex-row items-center justify-between gap-3 ${showTabs && destination === 'play' ? 'mb-5' : 'mb-7'}`}>
               {page !== 'home' || room || needsSignIn ? (
@@ -183,13 +184,13 @@ function GameApp() {
             ) : page === 'account' ? (
               <AccountScreen />
             ) : page === 'home' ? (
-              <View className="grow">
+              <View className="grow justify-between">
                 <View className="mb-5">
                   <Title className="text-[56px] leading-[1.1]">WHO, ME?</Title>
                   <Body className="mt-2 max-w-[300px] text-muted">Pick the friend who fits the prompt, then let the group explain itself.</Body>
                 </View>
-                <PromptCard hero label="From the Group Chat deck" question={decks[0].cards[0].question} />
-                <View className="mt-6 gap-2.5">
+                <PromptDeckStack deck={decks[0]} hero />
+                <View className="gap-2.5 pt-6">
                   <Button onPress={() => navigate('host')}>Host a game</Button>
                   <Button tone="secondary" onPress={() => navigate('join')} arrow={false}>Join with a code</Button>
                   <Tap onPress={() => startDemo()}>

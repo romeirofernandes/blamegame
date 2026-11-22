@@ -9,6 +9,7 @@ import { decks } from "./decks";
 import { useAppearance } from "./appearance";
 import { Body, Label, Surface, Tap, Title, hapticSelect } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "./beui/tabs";
+import { PromptDeckStack } from "./PromptDeckStack";
 
 export type GameDestination = "play" | "decks" | "settings";
 
@@ -121,17 +122,12 @@ export function DecksScreen({
                 </View>
 
                 {sample && (
-                  <View
-                    style={{ backgroundColor: deck.color }}
-                    className="gap-2 rounded-[18px] p-4"
-                  >
-                    <Label className="text-ink">
-                      {deck.cards.length} rounds ·{" "}
+                  <View className="gap-2">
+                    <Label className="text-muted">
+                      {deck.cards.length} prompts ·{" "}
                       {sample.kind === "pick" ? "pick a person" : "write an answer"}
                     </Label>
-                    <Text className="font-display text-[18px] leading-[25px] text-ink">
-                      {sample.question.replace("{player}", "Maya")}
-                    </Text>
+                    <PromptDeckStack deck={deck} />
                   </View>
                 )}
 
