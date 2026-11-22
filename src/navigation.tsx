@@ -30,10 +30,10 @@ export function GameTabBar({
 }) {
   const { colors } = useAppearance();
   return (
-    <SafeAreaView edges={["bottom"]} className="border-t border-line bg-panel">
+    <SafeAreaView edges={["bottom"]} className="border-t border-line/40 bg-panel">
       <View
         accessibilityRole="tablist"
-        className="mx-auto w-full max-w-[480px] flex-row gap-2 px-3 py-2"
+        className="mx-auto w-full max-w-[480px] flex-row px-4 py-1"
       >
         {destinations.map(({ id, label, icon }) => {
           const selected = active === id;
@@ -43,7 +43,7 @@ export function GameTabBar({
               accessibilityRole="tab"
               accessibilityLabel={label}
               accessibilityState={{ selected }}
-              className={`min-h-14 flex-1 items-center justify-center gap-1 rounded-[16px] border web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${selected ? "border-lime-strong bg-canvas" : "border-transparent bg-panel"}`}
+              className="min-h-14 flex-1 items-center justify-center gap-1 rounded-xl active:opacity-75 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
               onPress={() => {
                 if (selected) return;
                 hapticSelect();
@@ -51,18 +51,18 @@ export function GameTabBar({
               }}
             >
               <View
-                className={`size-7 items-center justify-center rounded-[10px] ${selected ? "bg-lime" : "bg-canvas"}`}
-              >
-                <HugeiconsIcon
-                  accessible={false}
-                  icon={icon}
-                  color={selected ? colors.ink : colors.muted}
-                  size={19}
-                  strokeWidth={2}
-                />
-              </View>
+                aria-hidden
+                className={`h-0.5 w-4 rounded-full ${selected ? "bg-lilac-strong" : "bg-transparent"}`}
+              />
+              <HugeiconsIcon
+                accessible={false}
+                icon={icon}
+                color={selected ? colors.lilacStrong : colors.muted}
+                size={21}
+                strokeWidth={selected ? 2.2 : 1.8}
+              />
               <Text
-                className={`font-boldface text-xs leading-4 ${selected ? "text-cloud" : "text-muted"}`}
+                className={`font-boldface text-xs leading-4 ${selected ? "text-lilac-strong" : "text-muted"}`}
               >
                 {label}
               </Text>
@@ -85,7 +85,7 @@ export function DecksScreen({
   return (
     <View className="gap-6">
       <View>
-        <Title className="text-[48px] leading-[48px]">The decks</Title>
+        <Title className="text-[48px] leading-display">The decks</Title>
         <Body className="mt-2 max-w-[310px] text-muted">
           Pick a mood for the room or try a deck solo.
         </Body>
@@ -105,7 +105,7 @@ export function DecksScreen({
                     <Label className="text-lilac-strong">{deck.label}</Label>
                     <Text
                       accessibilityRole="header"
-                      className="font-boldface text-[22px] leading-7 text-cloud"
+                      className="font-display text-[22px] leading-7 text-cloud"
                     >
                       {deck.name}
                     </Text>
@@ -133,7 +133,7 @@ export function DecksScreen({
                     className="gap-2 rounded-[18px] p-4"
                   >
                     <Label className="text-ink">Sample prompt</Label>
-                    <Text className="font-boldface text-[18px] leading-[25px] text-ink">
+                    <Text className="font-display text-[18px] leading-[25px] text-ink">
                       {sample.question.replace("{player}", "Maya")}
                     </Text>
                   </View>
@@ -176,7 +176,7 @@ export function SettingsScreen({
   return (
     <View className="gap-7">
       <View>
-        <Title className="text-[48px] leading-[48px]">Settings</Title>
+        <Title className="text-[48px] leading-display">Settings</Title>
         <Body className="mt-2 max-w-[310px] text-muted">
           Make the game feel like yours.
         </Body>
@@ -199,7 +199,7 @@ function SettingsSection({
     <View className="gap-3">
       <Text
         accessibilityRole="header"
-        className="font-boldface text-xl leading-6 text-cloud"
+        className="font-display text-xl leading-6 text-cloud"
       >
         {title}
       </Text>

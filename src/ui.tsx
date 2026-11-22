@@ -14,7 +14,7 @@ export function Body({ className = '', ...props }: TextProps) {
 }
 
 export function Title({ className = '', ...props }: TextProps) {
-  return <Text accessibilityRole="header" className={twMerge('font-display text-[54px] leading-display tracking-display text-cloud', className)} {...props} />;
+  return <Text accessibilityRole="header" className={twMerge('font-display text-[46px] leading-display tracking-display text-cloud', className)} {...props} />;
 }
 
 export function Label({ className = '', ...props }: TextProps) {
@@ -110,7 +110,7 @@ export function PromptCard({ question, label, color, hero = false }: {
           </View>
           <HugeiconsIcon icon={SparklesIcon} color={palette.ink} size={31} strokeWidth={1.7} />
         </View>
-        <Title className={`mt-3 text-ink ${hero ? 'text-[39px]' : 'text-[42px]'}`}>
+        <Title className={`mt-3 text-ink ${hero ? 'text-[31px]' : 'text-[34px]'}`}>
           {question}
         </Title>
       </View>

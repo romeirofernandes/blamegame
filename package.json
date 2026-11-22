@@ -13,8 +13,8 @@
     "deploy:worker": "bun run build:web && bun run --cwd worker deploy"
   },
   "dependencies": {
-    "@expo-google-fonts/barlow-condensed": "0.4.1",
     "@expo-google-fonts/dm-sans": "0.4.2",
+    "@expo-google-fonts/space-grotesk": "0.4.1",
     "@expo/metro-runtime": "~58.0.17",
     "@hugeicons/core-free-icons": "4.4.0",
     "@hugeicons/react-native": "1.0.17",

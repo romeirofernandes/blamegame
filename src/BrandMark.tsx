@@ -20,10 +20,10 @@ export type BrandMarkProps = {
 export function BrandMark({ size = 42, color = '#fbf7ff', iconOnly = false, style }: BrandMarkProps) {
   const wordStyle: TextStyle = {
     color,
-    fontFamily: 'BarlowCondensed_900Black',
+    fontFamily: 'SpaceGrotesk_700Bold',
     fontSize: size * 0.49,
     letterSpacing: size * 0.016,
-    lineHeight: size * 0.405,
+    lineHeight: size * 0.5,
   };
 
   return (

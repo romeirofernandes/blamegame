@@ -20,11 +20,11 @@
   --color-prompt-stack-accent: #c8adff;
   --color-prompt-border: #8675af;
   --color-doodle: #6d5494;
-  --font-display: BarlowCondensed_900Black;
+  --font-display: SpaceGrotesk_700Bold;
   --font-body: DMSans_500Medium;
   --font-boldface: DMSans_700Bold;
   --leading-body: 1.55;
-  --leading-display: 1.05;
+  --leading-display: 1.12;
   --tracking-display: -0.015em;
   --tracking-label: 0.05em;
 }

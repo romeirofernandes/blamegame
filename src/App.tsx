@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { BarlowCondensed_900Black } from '@expo-google-fonts/barlow-condensed/900Black';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
 import { HugeiconsIcon } from '@hugeicons/react-native';
@@ -37,7 +37,7 @@ type Page = 'home' | 'host' | 'join' | 'account';
 const inputStyle = 'min-h-14 rounded-[16px] border border-line bg-panel px-4 py-3 font-body text-base text-cloud';
 
 export default function App() {
-  const [loaded, error] = useFonts({ BarlowCondensed_900Black, DMSans_500Medium, DMSans_700Bold });
+  const [loaded, error] = useFonts({ SpaceGrotesk_700Bold, DMSans_500Medium, DMSans_700Bold });
   return (
     <SafeAreaProvider>
       <AppearanceProvider>
@@ -174,7 +174,7 @@ function GameApp() {
             ) : page === 'home' ? (
               <View className="grow">
                 <View className="mb-7">
-                  <Title className="text-[76px] leading-[71px]">WHO, ME?</Title>
+                  <Title className="text-[56px] leading-[1.1]">WHO, ME?</Title>
                   <Body className="mt-2 max-w-[285px] text-muted">The party game where everyone in the group chat is a suspect.</Body>
                 </View>
                 <PromptCard hero label="From the Group Chat deck" question={decks[0].cards[0].question} />
@@ -327,7 +327,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
       <View className="gap-3 rounded-[24px] bg-lilac p-5">
         <Label className="text-ink">Room code</Label>
         <View className="flex-row items-center justify-between gap-2">
-          <Text selectable className="shrink font-display text-[64px] leading-[63px] tracking-[4px] text-ink">{room.code}</Text>
+          <Text selectable className="shrink font-display text-[52px] leading-[1.1] tracking-[4px] text-ink">{room.code}</Text>
           <Tap label="Copy room code" onPress={() => void invite(true)} className="w-12 bg-ink">
             <View className="items-center"><HugeiconsIcon icon={Copy01Icon} size={22} color={colors.lilac} /></View>
           </Tap>

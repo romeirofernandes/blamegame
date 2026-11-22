@@ -181,7 +181,7 @@ export function DoodleWallpaper() {
         height="100%"
         viewBox="0 0 390 844"
         preserveAspectRatio="xMidYMid slice"
-        opacity={0.1}
+        opacity={0.14}
       >
         <G fill="none" stroke={colors.doodle} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
           <G transform="rotate(-9 42 102)">
@@ -227,6 +227,18 @@ export function DoodleWallpaper() {
           <Path d="M155 209q5 5 10 0" />
           <Path d="M201 611c9-9 18-9 27 0m-13-13v27" />
           <Path d="M101 789c9-8 18-8 27 0m-13-13v26" />
+          <G transform="rotate(12 93 327)">
+            <Rect x={75} y={307} width={31} height={39} rx={6} />
+            <Path d="M83 307v-6h30a5 5 0 0 1 5 5v29h-12m-23-9h15m-15 8h10" />
+          </G>
+          <Path d="m54 460 5 8 9 2-7 5 1 9-8-5-8 5 1-9-7-5 9-2z" />
+          <G transform="rotate(-12 326 478)">
+            <Rect x={304} y={456} width={44} height={44} rx={10} />
+            <Circle cx={316} cy={468} r={2} />
+            <Circle cx={326} cy={478} r={2} />
+            <Circle cx={336} cy={488} r={2} />
+          </G>
+          <Path d="m63 629 8 7 15-17m208 109 7 7m0-7-7 7" />
           <Circle cx={263} cy={807} r={3} />
           <Circle cx={275} cy={807} r={3} />
           <Path d="M265 818q5 4 10 0" />
