@@ -171,7 +171,10 @@ export function DecksScreen({
                     style={{ backgroundColor: deck.color }}
                     className="gap-2 rounded-[18px] p-4"
                   >
-                    <Label className="text-ink">Sample prompt</Label>
+                    <Label className="text-ink">
+                      {deck.cards.length} rounds ·{" "}
+                      {sample.kind === "pick" ? "pick a person" : "write an answer"}
+                    </Label>
                     <Text className="font-display text-[18px] leading-[25px] text-ink">
                       {sample.question.replace("{player}", "Maya")}
                     </Text>
@@ -214,13 +217,15 @@ export function SettingsScreen({
   avatarSlot?: ReactNode;
   accountSlot: ReactNode;
 }) {
+  const description = avatarSlot
+    ? "Set your theme and avatar, and manage your account."
+    : "Choose a theme and manage your account.";
+
   return (
     <View className="gap-6">
       <View>
         <Title className="text-[48px] leading-display">Settings</Title>
-        <Body className="mt-2 max-w-[310px] text-muted">
-          Choose a theme and manage your account.
-        </Body>
+        <Body className="mt-2 max-w-[310px] text-muted">{description}</Body>
       </View>
 
       <SettingsSection title="Appearance">{appearanceSlot}</SettingsSection>

@@ -9,7 +9,7 @@ import PartyIcon from '@hugeicons/core-free-icons/PartyIcon';
 import { getDeck } from './decks';
 import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
-import { Avatar, Body, Button, hapticSelect, Label, PromptCard, Tap, Title } from './ui';
+import { Body, Button, hapticSelect, Label, PresenceAvatar, PromptCard, Tap, Title } from './ui';
 
 export function RoundScreen({ room, host, demo, act, leave, disabled }: {
   room: RoomView;
@@ -104,7 +104,7 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
                   {room.players.filter((person) => room.allowSelfVote || person.id !== room.me).map((person) => (
                     <Tap key={person.id} label={`${person.name}${person.id === room.me ? ' (you)' : ''}${person.online === false ? ' (offline)' : ''}`} selected={choice === person.id} onPress={() => { hapticSelect(); setChoice(person.id); }} disabled={disabled}>
                       <View className={`flex-row items-center gap-3 rounded-[16px] border px-3 py-2.5 ${choice === person.id ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
-                        <OnlineAvatar player={person} />
+                        <PresenceAvatar player={person} />
                         <View className="flex-1">
                           <Body>{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
                           {person.online === false && <Label className="text-peach">Offline</Label>}
@@ -163,7 +163,7 @@ function Reveal({ room }: { room: RoomView }) {
               return (
                 <View key={pick.playerId} className="gap-2 rounded-[17px] border border-line bg-panel p-3">
                   <View className="flex-row items-center gap-3">
-                    <OnlineAvatar player={person} />
+                    <PresenceAvatar player={person} />
                     <View className="flex-1">
                       <Body>{person.name}</Body>
                       {person.online === false && <Label className="text-peach">Offline</Label>}
@@ -192,18 +192,6 @@ function Reveal({ room }: { room: RoomView }) {
         </>
       )}
       {!picks.length && !answers.length && <Body className="text-muted">No responses this round.</Body>}
-    </View>
-  );
-}
-
-function OnlineAvatar({ player }: { player: RoomView['players'][number] }) {
-  return (
-    <View className="relative">
-      <Avatar player={player} />
-      <View
-        aria-hidden
-        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-panel ${player.online === false ? 'bg-peach' : 'bg-lime-strong'}`}
-      />
     </View>
   );
 }

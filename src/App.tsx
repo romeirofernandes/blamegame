@@ -28,7 +28,7 @@ import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
 import { decks, getDeck } from './decks';
 import { DEMO_PLAYER, demoAction, newDemo } from './demo';
 import { MIN_PLAYERS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
-import { Avatar, Body, Button, hapticSelect, Label, PromptCard, Tap, Title } from './ui';
+import { Body, Button, hapticSelect, Label, PresenceAvatar, PromptCard, Tap, Title } from './ui';
 import { useRoom, webOrigin } from './useRoom';
 import { RoundScreen } from './RoundScreen';
 import { DecksScreen, GameTabBar, SettingsScreen, type GameDestination } from './navigation';
@@ -383,7 +383,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
         <Label>{onlineCount} {onlineCount === 1 ? 'player' : 'players'} online</Label>
         {room.players.map((player) => (
           <View key={player.id} className="flex-row items-center gap-3 rounded-[16px] border border-line bg-panel p-3">
-            <Avatar player={player} />
+            <PresenceAvatar player={player} />
             <Body className="flex-1">{player.name}{player.id === room.me ? ' (you)' : ''}</Body>
             {player.online === false && <Label>Reconnecting</Label>}
             {player.id === room.host && <Label className="text-lime-strong">Host</Label>}

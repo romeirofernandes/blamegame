@@ -182,7 +182,7 @@ export function DoodleWallpaper() {
         height="100%"
         viewBox="0 0 390 844"
         preserveAspectRatio="xMidYMid slice"
-        opacity={0.18}
+        opacity={0.12}
       >
         <G opacity={0.36} stroke="none">
           <Circle cx={36} cy={278} r={24} fill={colors.promptStackAccent} />

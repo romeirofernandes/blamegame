@@ -105,6 +105,19 @@ export function Avatar({ player }: { player: { id: string; avatar?: string } }) 
   );
 }
 
+export function PresenceAvatar({ player }: {
+  player: { id: string; avatar?: string; online?: boolean };
+}) {
+  return (
+    <View aria-hidden className="relative">
+      <Avatar player={player} />
+      <View
+        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-panel ${player.online === false ? 'bg-peach' : 'bg-lime-strong'}`}
+      />
+    </View>
+  );
+}
+
 export function PromptCard({ question, label, color, hero = false }: {
   question: string;
   label: string;
