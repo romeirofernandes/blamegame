@@ -124,9 +124,12 @@ function generateColors(seed: string): {
   }
 }
 
-export function ditherAvatar(seed: string) {
-  const { fill, stroke } = generateColors(seed)
-  const density = generateDensityGrid(seed)
+export const DITHER_AVATAR_VARIANT_COUNT = 8;
+
+export function ditherAvatar(seed: string, variant = 0) {
+  const variantSeed = variant === 0 ? seed : `${seed}:variant:${variant}`;
+  const { fill, stroke } = generateColors(variantSeed)
+  const density = generateDensityGrid(variantSeed)
   const pixels = dither(density)
   const path = bitmapToPath(pixels)
 

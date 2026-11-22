@@ -65,9 +65,12 @@ export function Button({ children, onPress, tone = 'primary', disabled, arrow = 
   );
 }
 
-export function Avatar({ player }: { player: { id: string; avatar?: string } }) {
+export function Avatar({ player }: { player: { id: string; avatar?: string; avatarSeed?: string; avatarVariant?: number } }) {
   const [failedPhoto, setFailedPhoto] = useState<string>();
-  const pattern = useMemo(() => ditherAvatar(player.id), [player.id]);
+  const pattern = useMemo(
+    () => ditherAvatar(player.avatarSeed ?? player.id, player.avatarVariant),
+    [player.id, player.avatarSeed, player.avatarVariant],
+  );
   return (
     <View aria-hidden className="size-10 shrink-0 overflow-hidden rounded-full">
       {player.avatar && player.avatar !== failedPhoto ? (

@@ -57,7 +57,7 @@ export default function App() {
 
 function GameApp() {
   const { colors, theme } = useAppearance();
-  const { user, loading, configured } = useAuth();
+  const { user, loading, configured, signOut } = useAuth();
   const player = !loading && user && !user.isAnonymous ? user : null;
   const online = useRoom(player, !loading);
   const avatarOptions = usePlayerAvatar(player?.uid);
@@ -68,11 +68,18 @@ function GameApp() {
   const [deck, setDeck] = useState(decks[0].id);
   const [mode, setMode] = useState<Mode>('anonymous');
   const [allowSelfVote, setAllowSelfVote] = useState(false);
+  const [roundCount, setRoundCount] = useState(10);
   const [demo, setDemo] = useState<Room | null>(null);
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
   const needsSignIn = !player && (page === 'host' || page === 'join' || !!demo);
   const room = player ? (demo ? viewRoom(demo, DEMO_PLAYER) : online.room) : null;
   const demoPlayer = demo && room?.players.find((person) => person.id === DEMO_PLAYER);
-  if (demoPlayer) demoPlayer.avatar = avatarOptions.avatar;
+  if (demoPlayer) {
+    demoPlayer.avatar = avatarOptions.avatar;
+    demoPlayer.avatarSeed = avatarOptions.avatarSeed;
+    demoPlayer.avatarVariant = avatarOptions.avatarVariant;
+  }
   const host = !!room && room.host === room.me;
   const showTabs = !room && !needsSignIn && page === 'home';
   const pickRounds = getDeck(deck)?.cards.some((card) => card.kind === 'pick');
@@ -118,6 +125,18 @@ function GameApp() {
   function act(action: Action) {
     if (demo) setDemo(demoAction(demo, action));
     else online.send(action);
+  }
+
+  async function signOutFromSettings() {
+    setSignOutError('');
+    setSignOutBusy(true);
+    try {
+      await signOut();
+    } catch {
+      setSignOutError('Unable to sign out. Check your connection and try again.');
+    } finally {
+      setSignOutBusy(false);
+    }
   }
 
   return (
@@ -169,15 +188,46 @@ function GameApp() {
             ) : showTabs && destination === 'settings' ? (
               <SettingsScreen
                 appearanceSlot={<AppearanceOptions />}
-                avatarSlot={player ? <PlayerAvatarOptions key={player.uid} seed={player.uid} {...avatarOptions} /> : undefined}
+                avatarSlot={player ? (
+                  <PlayerAvatarOptions
+                    key={player.uid}
+                    seed={avatarOptions.avatarSeed ?? player.uid}
+                    avatar={avatarOptions.avatar}
+                    hasPhoto={avatarOptions.hasPhoto}
+                    avatarVariant={avatarOptions.avatarVariant}
+                    mode={avatarOptions.mode}
+                    ready={avatarOptions.ready}
+                    update={avatarOptions.update}
+                    selectGeneratedAvatar={avatarOptions.selectGeneratedAvatar}
+                    useSavedPhoto={avatarOptions.useSavedPhoto}
+                  />
+                ) : undefined}
                 accountSlot={
                   <Surface className="gap-3 rounded-[18px] border border-line bg-panel p-4">
                     <Body className="text-muted">
                       {loading ? 'Restoring your account…' : user?.email ?? (user?.isAnonymous ? 'Signed in as a guest' : 'Sign in to play.')}
                     </Body>
-                    <Button tone="secondary" onPress={() => setPage('account')} disabled={loading}>
-                      {user ? 'Manage account' : configured ? 'Sign in or create account' : 'Account setup'}
-                    </Button>
+                    {user && !user.isAnonymous ? (
+                      <Tap
+                        label="Sign out"
+                        accessibilityState={{ busy: signOutBusy }}
+                        onPress={() => void signOutFromSettings()}
+                        disabled={loading || signOutBusy}
+                      >
+                        <View className="min-h-14 flex-row items-center justify-center rounded-[18px] border border-peach/40 bg-peach/10 px-4 py-3">
+                          <Text className="font-boldface text-base text-peach">
+                            {signOutBusy ? 'Signing out…' : 'Sign out'}
+                          </Text>
+                        </View>
+                      </Tap>
+                    ) : (
+                      <Button tone="secondary" onPress={() => setPage('account')} disabled={loading}>
+                        {user?.isAnonymous ? 'Save guest account' : configured ? 'Sign in or create account' : 'Account setup'}
+                      </Button>
+                    )}
+                    {signOutError ? (
+                      <Body accessibilityRole="alert" className="text-sm text-peach">{signOutError}</Body>
+                    ) : null}
                   </Surface>
                 }
               />

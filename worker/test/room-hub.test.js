@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
+import { addPlayer, applyAction, createRoom } from '../../src/game.ts';
+import { getDeck } from '../../src/decks.ts';
 import { GameRoom } from '../src/room-hub.js';
 
 class MemoryStorage {
@@ -58,7 +60,7 @@ describe('RoomHub WebSocket protocol', () => {
     route(third, 'ABCDE');
 
     await hub.webSocketMessage(host, command('create', {
-      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'),
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'), roundCount: 8,
     }));
     const code = host.lastState().code;
     await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('b'), avatar: validAvatar }));
@@ -70,7 +72,7 @@ describe('RoomHub WebSocket protocol', () => {
       round: 1, submission: { kind: 'pick', value: host.lastState().me },
     }));
 
-    expect(host.lastState()).toMatchObject({ phase: 'vote', submitted: 1, hasSubmitted: false });
+    expect(host.lastState()).toMatchObject({ phase: 'vote', total: 8, submitted: 1, hasSubmitted: false });
     expect(guest.lastState()).toMatchObject({ phase: 'vote', hasSubmitted: true });
     expect(host.lastState().result).toBeUndefined();
 
@@ -82,7 +84,7 @@ describe('RoomHub WebSocket protocol', () => {
     route(resumed, code, false, guest.attachment.authUid);
     await recoveredHub.webSocketMessage(resumed, command('resume', { code, token: token('b') }));
 
-    expect(resumed.lastState()).toMatchObject({ code, me: guest.lastState().me, phase: 'vote', hasSubmitted: true });
+    expect(resumed.lastState()).toMatchObject({ code, me: guest.lastState().me, phase: 'vote', total: 8, hasSubmitted: true });
     expect(resumed.lastState().players.find((player) => player.id === guest.lastState().me).avatar).toBe(validAvatar);
     expect(resumed.lastState().result).toBeUndefined();
   });
@@ -122,10 +124,66 @@ describe('RoomHub WebSocket protocol', () => {
     route(host, 'UVWXY', true);
 
     await hub.webSocketMessage(host, command('create', {
-      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('h'), allowSelfVote: true,
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('h'), allowSelfVote: true, roundCount: 12,
     }));
 
-    expect(host.lastState().allowSelfVote).toBe(true);
+    expect(host.lastState()).toMatchObject({ allowSelfVote: true, total: 12 });
+  });
+
+  test('keeps the original prompt order for clients that omit roundCount', async () => {
+    const state = new FakeState();
+    const host = new FakeSocket();
+    const guest = new FakeSocket();
+    const third = new FakeSocket();
+    state.sockets.add(host);
+    state.sockets.add(guest);
+    state.sockets.add(third);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'RSTUV', true);
+    route(guest, 'RSTUV');
+    route(third, 'RSTUV');
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('r'),
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('s') }));
+    await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('t') }));
+    await hub.webSocketMessage(host, command('start'));
+
+    expect(host.lastState()).toMatchObject({ total: 5, card: { question: getDeck('group-chat').cards[0].question } });
+  });
+
+  test('resumes an older saved room with its original five prompts in order', async () => {
+    const authUid = crypto.randomUUID();
+    const oldRoom = createRoom('ABCDE', 'old-host', 'Maya', 'group-chat', 'anonymous');
+    addPlayer(oldRoom, 'old-one', 'Jules');
+    addPlayer(oldRoom, 'old-two', 'Sam');
+    applyAction(oldRoom, 'old-host', { type: 'start' });
+    delete oldRoom.cards;
+    delete oldRoom.totalRounds;
+    const storage = new MemoryStorage();
+    const oldToken = token('o');
+    await storage.put('room', {
+      room: oldRoom,
+      tokens: new Map([[oldToken, { playerId: 'old-host', authUid }]]),
+      touched: Date.now(),
+    });
+
+    const state = new FakeState(storage);
+    const host = new FakeSocket();
+    state.sockets.add(host);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'ABCDE', false, authUid);
+    await hub.webSocketMessage(host, command('resume', { code: 'ABCDE', token: oldToken }));
+
+    expect(host.lastState()).toMatchObject({ phase: 'vote', total: 5, round: 1 });
+    await hub.webSocketMessage(host, command('submit', { round: 1, submission: { kind: 'pass' } }));
+    await hub.webSocketMessage(host, command('reveal'));
+    await hub.webSocketMessage(host, command('next'));
+    expect(host.lastState()).toMatchObject({ phase: 'vote', total: 5, round: 2 });
   });
 
   test('requires three online players to start and permits the start after reconnect', async () => {
@@ -269,5 +327,37 @@ describe('RoomHub WebSocket protocol', () => {
 
     expect(hub.session).toBeNull();
     expect(guest.messages.at(-1)).toMatchObject({ type: 'error', message: 'This room has expired.', reset: true });
+  });
+
+  test('shares selected generated avatar variants with the room', async () => {
+    const state = new FakeState();
+    const host = new FakeSocket();
+    const guest = new FakeSocket();
+    state.sockets.add(host);
+    state.sockets.add(guest);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'ABCDE', true);
+    route(guest, 'ABCDE');
+    const hostAvatarSeed = 'a'.repeat(32);
+    const guestAvatarSeed = 'b'.repeat(32);
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'),
+      avatarSeed: hostAvatarSeed, avatarVariant: 3,
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(guest, command('join', {
+      name: 'Jules', code, token: token('b'), avatarSeed: guestAvatarSeed, avatarVariant: 6,
+    }));
+
+    expect(host.lastState().players.find((player) => player.name === 'Maya')).toMatchObject({
+      avatarSeed: hostAvatarSeed,
+      avatarVariant: 3,
+    });
+    expect(guest.lastState().players.find((player) => player.name === 'Jules')).toMatchObject({
+      avatarSeed: guestAvatarSeed,
+      avatarVariant: 6,
+    });
   });
 });

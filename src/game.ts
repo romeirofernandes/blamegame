@@ -1,9 +1,19 @@
-import { getDeck, type Card } from './decks';
+import { drawCards, getDeck, type Card } from './decks';
 import { validatePlayerAvatar } from './avatar';
+import { DITHER_AVATAR_VARIANT_COUNT } from './dither-avatar';
 
 export type Mode = 'anonymous' | 'named';
 type Phase = 'lobby' | 'vote' | 'reveal' | 'recap';
-export type Player = { id: string; name: string; color: number; avatar?: string };
+export const LEGACY_ROUND_COUNT = 5;
+export const MIN_ROUNDS = 1;
+export type Player = {
+  id: string;
+  name: string;
+  color: number;
+  avatar?: string;
+  avatarSeed?: string;
+  avatarVariant?: number;
+};
 type Submission = { kind: 'pick' | 'write'; value: string } | { kind: 'pass' };
 type Result = {
   picks: { playerId: string; count: number; voters?: string[] }[];
@@ -16,6 +26,8 @@ export type Room = {
   deckId: string;
   mode: Mode;
   allowSelfVote: boolean;
+  totalRounds?: number;
+  cards?: Card[];
   phase: Phase;
   players: Player[];
   rounds: Round[];
@@ -47,9 +59,9 @@ export type Action =
 export type Command = Action
   | {
     type: 'create'; name: string; deckId: string; mode: Mode; token: string;
-    allowSelfVote?: boolean; avatar?: string;
+    allowSelfVote?: boolean; avatar?: string; avatarSeed?: string; avatarVariant?: number; roundCount?: number;
   }
-  | { type: 'join'; name: string; code: string; token: string; avatar?: string }
+  | { type: 'join'; name: string; code: string; token: string; avatar?: string; avatarSeed?: string; avatarVariant?: number }
   | { type: 'resume'; code: string; token: string }
   | { type: 'leave' };
 export type Message =
@@ -67,13 +79,31 @@ export function createRoom(
   mode: Mode,
   allowSelfVote = false,
   avatar?: string,
+  avatarVariant?: number,
+  avatarSeed?: string,
+  roundCount?: number,
+  random: () => number = Math.random,
 ): Room {
-  const room: Room = { code, host: id, deckId, mode, allowSelfVote, phase: 'lobby', players: [], rounds: [] };
-  addPlayer(room, id, name, avatar);
+  const totalRounds = roundCount ?? LEGACY_ROUND_COUNT;
+  const room: Room = {
+    code, host: id, deckId, mode, allowSelfVote, totalRounds,
+    cards: roundCount === undefined
+      ? getDeck(deckId)!.cards.slice(0, totalRounds)
+      : drawCards(deckId, roundCount, random),
+    phase: 'lobby', players: [], rounds: [],
+  };
+  addPlayer(room, id, name, avatar, avatarVariant, avatarSeed);
   return room;
 }
 
-export function addPlayer(room: Room, id: string, value: string, avatar?: string) {
+export function addPlayer(
+  room: Room,
+  id: string,
+  value: string,
+  avatar?: string,
+  avatarVariant?: number,
+  avatarSeed?: string,
+) {
   const name = value.trim().replace(/\s+/g, ' ');
   if (room.phase !== 'lobby') throw new Error('This game has already started.');
   if (room.players.length >= MAX_PLAYERS) throw new Error('This room is full.');
@@ -82,20 +112,31 @@ export function addPlayer(room: Room, id: string, value: string, avatar?: string
     throw new Error('Someone already has that name.');
   }
   const playerAvatar = validatePlayerAvatar(avatar);
+  const validAvatarVariant = typeof avatarVariant === 'number' && Number.isInteger(avatarVariant) &&
+    avatarVariant >= 0 && avatarVariant < DITHER_AVATAR_VARIANT_COUNT ? avatarVariant : undefined;
+  const validAvatarSeed = typeof avatarSeed === 'string' && /^[a-f\d]{32}$/i.test(avatarSeed)
+    ? avatarSeed
+    : undefined;
   room.players.push({
     id, name, color: room.players.length % 6,
     ...(playerAvatar ? { avatar: playerAvatar } : {}),
+    ...(validAvatarSeed ? { avatarSeed: validAvatarSeed } : {}),
+    ...(validAvatarVariant !== undefined ? { avatarVariant: validAvatarVariant } : {}),
   });
 }
 
 function beginRound(room: Room) {
-  const card = getDeck(room.deckId)!.cards[room.rounds.length];
+  const card = (room.cards ?? getDeck(room.deckId)!.cards.slice(0, totalRounds(room)))[room.rounds.length];
   const spotlight = room.players[room.rounds.length % room.players.length];
   room.rounds.push({
     card: { ...card, question: card.question.replace('{player}', () => spotlight.name) },
     submissions: new Map(),
   });
   room.phase = 'vote';
+}
+
+function totalRounds(room: Room) {
+  return room.totalRounds ?? room.cards?.length ?? LEGACY_ROUND_COUNT;
 }
 
 function canRevealRound(room: Room, round: Round | undefined, online?: ReadonlySet<string>) {
@@ -144,7 +185,7 @@ export function applyAction(room: Room, playerId: string, action: Action, online
     return;
   }
   if (action.type === 'next' && room.phase === 'reveal') {
-    if (room.rounds.length === getDeck(room.deckId)!.cards.length) room.phase = 'recap';
+    if (room.rounds.length === totalRounds(room)) room.phase = 'recap';
     else beginRound(room);
     return;
   }
@@ -178,7 +219,7 @@ export function viewRoom(room: Room, me: string, onlinePlayerIds?: Iterable<stri
   return {
     code: room.code, me, host: room.host, deckId: room.deckId, mode: room.mode, phase: room.phase,
     players: room.players.map((player) => ({ ...player, online: online.has(player.id) })),
-    round: room.rounds.length, total: getDeck(room.deckId)!.cards.length,
+    round: room.rounds.length, total: totalRounds(room),
     card: round?.card, submitted: round?.submissions.size ?? 0, hasSubmitted: round?.submissions.has(me) ?? false,
     allowSelfVote: room.allowSelfVote ?? false,
     canReveal: me === room.host && canRevealRound(room, round, online),

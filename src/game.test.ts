@@ -1,10 +1,57 @@
 /// <reference types="bun" />
 import { expect, test } from 'bun:test';
 import { addPlayer, applyAction, createRoom, type Mode, viewRoom } from './game';
+import { decks, drawCards } from './decks';
 import { DEMO_PLAYER, demoAction, newDemo } from './demo';
+import { ditherAvatar } from './dither-avatar';
+
+const legacyPrompts = [
+  [
+    'Who reads 83 messages and still asks “what time?”',
+    'Who sends “on my way” while looking for their socks?',
+    'Who says “quick story” and starts with “when I was born”?',
+    'Who revives a dead group chat with one photo?',
+    'Who would send a screenshot straight to the person in it?',
+  ],
+  [
+    'Who would volunteer as a magician’s assistant before hearing the trick?',
+    'Who would accidentally join a parade and end up carrying the banner?',
+    'Who would get a whole wedding dancing before the DJ arrives?',
+    'Who would walk into the wrong birthday party and stay for cake?',
+    'Who would take a free haircut without asking who’s holding the scissors?',
+  ],
+  [
+    'Who makes a new person feel welcome without making a fuss?',
+    'Who remembers the little thing you mentioned months ago?',
+    'Who notices you’re quiet and checks in later?',
+    'Who would show up at the airport with snacks and a handmade sign?',
+    'Who could plan a day that feels exactly like you?',
+  ],
+  [
+    'Who would book the perfect rental for the wrong weekend?',
+    'Who packs for every forecast but forgets a charger?',
+    'Who leaves the souvenir shop knowing the owner’s life story?',
+    'Who says “we can walk it” and accidentally plans a hike?',
+    'Who makes the trip spreadsheet and still arrives at the gate last?',
+  ],
+  [
+    'Who could talk a vending machine into refunding their money?',
+    'Who’d be hired to name nail polish shades?',
+    'Who would last a full shift guarding a button marked “Do not press”?',
+    'Who could identify someone from one shoe in the lost-and-found?',
+    'Who could write a five-star review for a chair that broke under them?',
+  ],
+  [
+    'What would {player} get unexpectedly famous for?',
+    'What should {player} call their group-chat memoir?',
+    'What very specific skill could {player} teach a masterclass on?',
+    'What one-line text could only have come from {player}?',
+    'What oddly specific award should {player} win?',
+  ],
+];
 
 function started(mode: Mode, deckId = 'group-chat', allowSelfVote = false) {
-  const room = createRoom('ABCDE', 'host', 'Maya', deckId, mode, allowSelfVote);
+  const room = createRoom('ABCDE', 'host', 'Maya', deckId, mode, allowSelfVote, undefined, undefined, undefined, 5, () => 0);
   addPlayer(room, 'guest-one', 'Jules');
   addPlayer(room, 'guest-two', 'Sam');
   applyAction(room, 'host', { type: 'start' });
@@ -32,7 +79,9 @@ for (const mode of ['anonymous', 'named'] as const) {
     expect(() => applyAction(room, 'guest-two', { type: 'submit', round: 1, submission: { kind: 'pass' } })).toThrow('round is closed');
     applyAction(room, 'guest-two', { type: 'submit', round: 2, submission: { kind: 'pass' } });
     const spotlight = started(mode, 'spotlight');
-    expect(viewRoom(spotlight, 'host').card?.question).toBe('What would Maya get unexpectedly famous for?');
+    const spotlightQuestion = viewRoom(spotlight, 'host').card?.question;
+    expect(spotlightQuestion).toContain('Maya');
+    expect(decks[5].cards.some((card) => card.question.replace('{player}', 'Maya') === spotlightQuestion)).toBe(true);
     const text = 'The world’s largest stack of pancakes.';
     applyAction(spotlight, 'guest-two', { type: 'submit', round: 1, submission: { kind: 'write', value: text } });
     expect(JSON.stringify(viewRoom(spotlight, 'host'))).not.toContain(text);
@@ -89,6 +138,9 @@ test('passes count as ready but do not create vote or answer results', () => {
 
 test('demo friends do not cast self votes when self-voting is disabled', () => {
   let room = newDemo();
+  expect(room.rounds.map((round) => round.card.question)).toEqual(
+    newDemo().rounds.map((round) => round.card.question),
+  );
   for (let round = 1; round <= viewRoom(room, DEMO_PLAYER).total; round++) {
     const card = room.rounds.at(-1)!.card;
     const submission = card.kind === 'pick'
@@ -99,4 +151,85 @@ test('demo friends do not cast self votes when self-voting is disabled', () => {
     room = demoAction(room, { type: 'reveal' });
     room = demoAction(room, { type: 'next' });
   }
+});
+
+test('the spotlight demo answers every selected write prompt deterministically', () => {
+  let room = newDemo('spotlight');
+  const firstDraw = room.rounds.map((round) => round.card.question);
+  expect(newDemo('spotlight').rounds.map((round) => round.card.question)).toEqual(firstDraw);
+
+  for (let round = 1; round <= viewRoom(room, DEMO_PLAYER).total; round++) {
+    room = demoAction(room, {
+      type: 'submit', round,
+      submission: { kind: 'write', value: 'A demo answer.' },
+    });
+    expect(viewRoom(room, DEMO_PLAYER).submitted).toBe(room.players.length);
+    room = demoAction(room, { type: 'reveal' });
+    expect(viewRoom(room, DEMO_PLAYER).result?.answers).toHaveLength(room.players.length);
+    room = demoAction(room, { type: 'next' });
+  }
+
+  expect(viewRoom(room, DEMO_PLAYER).phase).toBe('recap');
+});
+
+test('each deck has 50 distinct prompts that preserve its pick or write format', () => {
+  expect(decks).toHaveLength(6);
+  for (const [index, deck] of decks.entries()) {
+    expect(deck.cards.length).toBeGreaterThanOrEqual(50);
+    expect(deck.cards.length).toBeLessThanOrEqual(60);
+    expect(new Set(deck.cards.map((card) => card.question)).size).toBe(deck.cards.length);
+    expect(deck.cards.every((card) => card.kind === (deck.id === 'spotlight' ? 'write' : 'pick'))).toBe(true);
+    expect(deck.cards.slice(0, 5).map((card) => card.question)).toEqual(legacyPrompts[index]);
+  }
+});
+
+test('a room draws its chosen number of prompts without repeats and ends on that round', () => {
+  const room = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined, undefined, 13, () => 0);
+  addPlayer(room, 'guest-one', 'Jules');
+  addPlayer(room, 'guest-two', 'Sam');
+  applyAction(room, 'host', { type: 'start' });
+  const questions: string[] = [];
+
+  for (let round = 1; round <= 13; round++) {
+    questions.push(room.rounds.at(-1)!.card.question);
+    applyAction(room, 'host', { type: 'submit', round, submission: { kind: 'pass' } });
+    applyAction(room, 'host', { type: 'reveal' });
+    applyAction(room, 'host', { type: 'next' });
+  }
+
+  expect(viewRoom(room, 'host')).toMatchObject({ phase: 'recap', round: 13, total: 13 });
+  expect(new Set(questions).size).toBe(13);
+  expect(drawCards('group-chat', 10, () => 0)).toEqual(drawCards('group-chat', 10, () => 0));
+});
+
+test('legacy rooms without a saved draw keep their original five-round order', () => {
+  const room = started('anonymous');
+  delete room.cards;
+  delete room.totalRounds;
+  room.rounds[0].card = { ...decks[0].cards[0] };
+  const questions: string[] = [];
+  expect(viewRoom(room, 'host').total).toBe(5);
+
+  for (let round = 1; round <= 5; round++) {
+    questions.push(room.rounds.at(-1)!.card.question);
+    applyAction(room, 'host', { type: 'submit', round, submission: { kind: 'pass' } });
+    applyAction(room, 'host', { type: 'reveal' });
+    applyAction(room, 'host', { type: 'next' });
+  }
+
+  expect(questions).toEqual(legacyPrompts[0]);
+  expect(viewRoom(room, 'host').phase).toBe('recap');
+});
+
+test('generated avatar seeds and variants are retained and validated', () => {
+  const seed = 'a'.repeat(32);
+  const room = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, 3, seed);
+
+  expect(viewRoom(room, 'host').players[0]).toMatchObject({ avatarSeed: seed, avatarVariant: 3 });
+  expect(ditherAvatar(seed)).toEqual(ditherAvatar(seed, 0));
+  expect(ditherAvatar(seed, 3)).not.toEqual(ditherAvatar(seed));
+
+  const invalid = createRoom('FGHIJ', 'host-two', 'Maya', 'group-chat', 'anonymous', false, undefined, 12, 'not-a-seed');
+  expect(invalid.players[0]).not.toHaveProperty('avatarVariant');
+  expect(invalid.players[0]).not.toHaveProperty('avatarSeed');
 });

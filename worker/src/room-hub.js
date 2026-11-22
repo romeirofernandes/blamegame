@@ -1,4 +1,4 @@
-import { addPlayer, applyAction, createRoom, MIN_PLAYERS, viewRoom } from '../../src/game.ts';
+import { addPlayer, applyAction, createRoom, LEGACY_ROUND_COUNT, MIN_PLAYERS, MIN_ROUNDS, viewRoom } from '../../src/game.ts';
 import { getDeck } from '../../src/decks.ts';
 import { MAX_PLAYER_AVATAR_LENGTH } from '../../src/avatar.ts';
 import { verifyFirebaseIdToken } from './firebase-auth.js';
@@ -168,14 +168,18 @@ export class GameRoom {
         try { socket.close(1013, 'Room code collision'); } catch {}
         return;
       }
-      if (typeof command.name !== 'string' || !getDeck(command.deckId) ||
+      const deck = getDeck(command.deckId);
+      const roundCount = command.roundCount ?? LEGACY_ROUND_COUNT;
+      if (typeof command.name !== 'string' || !deck ||
         (command.mode !== 'anonymous' && command.mode !== 'named') ||
-        (command.allowSelfVote !== undefined && typeof command.allowSelfVote !== 'boolean')) {
-        throw new Error('Choose a deck and vote mode.');
+        (command.allowSelfVote !== undefined && typeof command.allowSelfVote !== 'boolean') ||
+        !Number.isInteger(roundCount) || roundCount < MIN_ROUNDS || roundCount > deck.cards.length) {
+        throw new Error('Choose a deck, vote mode, and valid round count.');
       }
       const id = crypto.randomUUID();
       const room = createRoom(code, id, command.name, command.deckId, command.mode,
-        command.allowSelfVote ?? false, command.avatar);
+        command.allowSelfVote ?? false, command.avatar, command.avatarVariant, command.avatarSeed,
+        command.roundCount == null ? undefined : roundCount);
       this.session = { room, tokens: new Map([[command.token, { playerId: id, authUid }]]), touched: Date.now() };
       this.attach(socket, id, authUid);
       await this.persistAndSchedule();
@@ -208,7 +212,7 @@ export class GameRoom {
       }
       if (typeof command.name !== 'string') throw new Error('Enter your name.');
       playerId = crypto.randomUUID();
-      addPlayer(this.session.room, playerId, command.name, command.avatar);
+      addPlayer(this.session.room, playerId, command.name, command.avatar, command.avatarVariant, command.avatarSeed);
       this.session.tokens.set(command.token, { playerId, authUid });
     }
 
