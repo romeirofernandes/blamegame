@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#7c3aed"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#ffffff">B</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect x="5" y="5" width="118" height="118" rx="34" fill="#c8adff"/>
+  <path d="M30 29h27c8.3 0 15 6.7 15 15v23c0 8.3-6.7 15-15 15h-5L40 94l1-12H30c-8.3 0-15-6.7-15-15V44c0-8.3 6.7-15 15-15Z" fill="#a88bdc" transform="rotate(-9 43 58)"/>
+  <path d="M54 19h28c11 0 20 9 20 20v31c0 11-9 20-20 20h-3l-14 15 1-15H54c-11 0-20-9-20-20V39c0-11 9-20 20-20Z" fill="#e2fc67" transform="rotate(4 65 58)"/>
+  <path d="M52 47c.5-8 6.5-13 14.5-13 8.7 0 14.5 5 14.5 12 0 6-3.8 9-9.3 12-5.8 3-7.7 6.3-7.7 12.4" fill="none" stroke="#15131d" stroke-linecap="round" stroke-width="8.5"/>
+  <circle cx="64" cy="78" r="4.5" fill="#15131d"/>
+  <path d="m105 12 2.8 7.2 7.2 2.8-7.2 2.8-2.8 7.2-2.8-7.2-7.2-2.8 7.2-2.8Z" fill="#15131d"/>
 </svg>
