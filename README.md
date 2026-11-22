@@ -8,7 +8,7 @@ a party game for 3–12 friends. pick a deck, vote for who fits the prompt, and 
 
 [Android downloads on GitHub Releases](https://github.com/romeirofernandes/blamegame/releases). the first APK will go here once the room server is live.
 
-to play in a browser, open your deployed Worker URL. host a game and send the room code or invite link to your friends.
+play in your browser at [blame-game.theromeirofernandes.workers.dev](https://blame-game.theromeirofernandes.workers.dev). host a game and send the room code or invite link to your friends.
 
 ## run locally
 
