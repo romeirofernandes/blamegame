@@ -142,11 +142,11 @@ export class GameRoom {
       this.sendError(socket, 'Join the room first.', true);
       return;
     }
-    if (command.type === 'start' && this.session.room.phase === 'lobby' &&
-      this.connectedPlayerIds().size < MIN_PLAYERS) {
+    const online = this.connectedPlayerIds();
+    if (command.type === 'start' && this.session.room.phase === 'lobby' && online.size < MIN_PLAYERS) {
       throw new Error('You need at least 3 players online.');
     }
-    applyAction(this.session.room, playerId, command);
+    applyAction(this.session.room, playerId, command, online);
     this.session.touched = Date.now();
     await this.persistAndSchedule();
     this.broadcast();

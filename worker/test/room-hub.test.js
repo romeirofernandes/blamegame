@@ -185,6 +185,13 @@ describe('RoomHub WebSocket protocol', () => {
     await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('g') }));
     await hub.webSocketMessage(host, command('start'));
 
+    expect(host.lastState().canReveal).toBe(false);
+    await hub.webSocketMessage(host, command('reveal'));
+    expect(host.lastState().phase).toBe('vote');
+    expect(host.messages.at(-1)).toMatchObject({
+      type: 'error', message: 'That action is unavailable right now.',
+    });
+
     await hub.webSocketClose(third);
     expect(host.lastState()).toMatchObject({
       phase: 'vote', submitted: 0, canReveal: true,

@@ -98,7 +98,13 @@ function beginRound(room: Room) {
   room.phase = 'vote';
 }
 
-export function applyAction(room: Room, playerId: string, action: Action) {
+function canRevealRound(room: Room, round: Round | undefined, online?: ReadonlySet<string>) {
+  return room.phase === 'vote' && !!round && (
+    round.submissions.size > 0 || (online !== undefined && room.players.some((player) => !online.has(player.id)))
+  );
+}
+
+export function applyAction(room: Room, playerId: string, action: Action, online?: ReadonlySet<string>) {
   if (!room.players.some((player) => player.id === playerId)) throw new Error('Join the room first.');
   const round = room.rounds.at(-1);
   if (action.type === 'submit') {
@@ -133,7 +139,7 @@ export function applyAction(room: Room, playerId: string, action: Action) {
     beginRound(room);
     return;
   }
-  if (action.type === 'reveal' && room.phase === 'vote' && round) {
+  if (action.type === 'reveal' && canRevealRound(room, round, online)) {
     room.phase = 'reveal';
     return;
   }
@@ -175,9 +181,7 @@ export function viewRoom(room: Room, me: string, onlinePlayerIds?: Iterable<stri
     round: room.rounds.length, total: getDeck(room.deckId)!.cards.length,
     card: round?.card, submitted: round?.submissions.size ?? 0, hasSubmitted: round?.submissions.has(me) ?? false,
     allowSelfVote: room.allowSelfVote ?? false,
-    canReveal: me === room.host && room.phase === 'vote' && !!round && (
-      round.submissions.size > 0 || room.players.some((player) => !online.has(player.id))
-    ),
+    canReveal: me === room.host && canRevealRound(room, round, online),
     result: room.phase === 'reveal' && round ? results(room, round) : undefined,
     recap: room.phase === 'recap' ? room.rounds.map((item) => {
       const { picks } = results(room, item);

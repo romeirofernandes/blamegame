@@ -66,13 +66,16 @@ test('self votes are disabled by default and can be enabled by the host', () => 
 
 test('host can reveal an empty round when a player disconnects', () => {
   const room = started('anonymous');
-  const view = viewRoom(room, 'host', ['host', 'guest-one']);
+  expect(() => applyAction(room, 'host', { type: 'reveal' }, new Set(['host', 'guest-one', 'guest-two'])))
+    .toThrow('That action is unavailable right now.');
+  const online = new Set(['host', 'guest-one']);
+  const view = viewRoom(room, 'host', online);
   expect(view.players.map(({ id, online }) => [id, online])).toEqual([
     ['host', true], ['guest-one', true], ['guest-two', false],
   ]);
   expect(view.canReveal).toBe(true);
 
-  applyAction(room, 'host', { type: 'reveal' });
+  applyAction(room, 'host', { type: 'reveal' }, online);
   expect(viewRoom(room, 'host').result).toEqual({ picks: [], answers: [] });
 });
 
