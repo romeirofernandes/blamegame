@@ -4,7 +4,7 @@
     "slug": "blame-game",
     "scheme": "blamegame",
     "version": "1.0.0",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#15131d",
     "icon": "./assets/app-icon.png",
     "ios": {
@@ -21,7 +21,6 @@
     },
     "web": {
       "output": "single",
-      "themeColor": "#100e16",
       "description": "A live party game for the group chat.",
       "favicon": "./assets/app-icon.png"
     },

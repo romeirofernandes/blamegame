@@ -103,7 +103,8 @@ export function useRoom(account: Account | null = null, authReady = true) {
           setError('Could not verify your sign-in. Check your connection and try again.');
           setConnected(false);
           setPending(false);
-          disconnect();
+          if (identity?.code) peer.close();
+          else disconnect();
         }
       };
 

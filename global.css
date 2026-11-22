@@ -5,15 +5,38 @@
 
 @theme {
   --color-ink: #15131d;
-  --color-canvas: #100e16;
-  --color-panel: #211e2d;
-  --color-line: #3e384e;
-  --color-cloud: #fbf7ff;
-  --color-muted: #bab1cb;
-  --color-lilac: #c8adff;
+  --color-canvas: #f5f1f8;
+  --color-panel: #ffffff;
+  --color-line: #93879f;
+  --color-cloud: #211b29;
+  --color-muted: #625a69;
+  --color-lilac: #e7dcf5;
+  --color-lilac-strong: #684b96;
   --color-lime: #e2fc67;
-  --color-peach: #ffb199;
+  --color-lime-strong: #536312;
+  --color-peach: #9b4934;
+  --color-peach-fill: #ffb199;
+  --color-prompt-stack: #eee7f7;
+  --color-prompt-stack-accent: #c8adff;
+  --color-prompt-border: #8675af;
+  --color-doodle: #6d5494;
   --font-display: BarlowCondensed_900Black;
   --font-body: DMSans_500Medium;
   --font-boldface: DMSans_700Bold;
+  --leading-body: 1.55;
+  --leading-display: 1.05;
+  --tracking-display: -0.015em;
+  --tracking-label: 0.05em;
+}
+
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }

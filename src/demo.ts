@@ -15,7 +15,7 @@ const sampleAnswers = [
 ];
 
 export function newDemo(deckId = 'group-chat') {
-  const room = createRoom('DEMO', DEMO_PLAYER, 'You', deckId, 'anonymous');
+  const room = createRoom('DEMO', DEMO_PLAYER, 'Riley', deckId, 'anonymous');
   for (const name of friends) addPlayer(room, name, name);
   applyAction(room, DEMO_PLAYER, { type: 'start' });
   return room;

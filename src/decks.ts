@@ -5,7 +5,7 @@ export const decks = [
     id: 'group-chat', name: 'Group Chat', description: 'Read receipts, road trips, and lore.',
     label: 'THE CLASSIC', color: '#c8adff',
     cards: [
-      { kind: 'pick', question: 'Who would accidentally become the group chat meme?' },
+      { kind: 'pick', question: 'Who would become a group chat meme?' },
       { kind: 'pick', question: 'Who says “five minutes” while still in bed?' },
       { kind: 'pick', question: 'Who says “quick story” and starts at the beginning of their life?' },
       { kind: 'pick', question: 'Who could turn a grocery run into a three-hour side quest?' },

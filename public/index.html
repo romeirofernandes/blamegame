@@ -3,12 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-    <meta name="color-scheme" content="dark">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f5f1f8">
     <title>%WEB_TITLE%</title>
     <style>
       html, body, #root { height: 100%; }
-      html { overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
-      body { overflow: hidden; margin: 0; background: #100e16; }
+      html { color-scheme: light dark; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+      body { overflow: hidden; margin: 0; background: #f5f1f8; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #100e16; }
+      }
       #root { display: flex; }
     </style>
   </head>

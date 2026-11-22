@@ -3,24 +3,22 @@ import { Platform, Pressable, Text, View, type TextProps } from 'react-native';
 import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
-import FlashIcon from '@hugeicons/core-free-icons/FlashIcon';
 import SparklesIcon from '@hugeicons/core-free-icons/SparklesIcon';
 import * as Haptics from 'expo-haptics';
 import { twMerge } from 'tailwind-merge';
+import { useAppearance } from './appearance';
 import type { Player } from './game';
 
-export const colors = { ink: '#15131d', cloud: '#fbf7ff', muted: '#bab1cb', lilac: '#c8adff', lime: '#e2fc67' };
-
 export function Body({ className = '', ...props }: TextProps) {
-  return <Text className={twMerge('font-body text-base leading-6 text-cloud', className)} {...props} />;
+  return <Text className={twMerge('font-body text-base leading-body text-cloud', className)} {...props} />;
 }
 
 export function Title({ className = '', ...props }: TextProps) {
-  return <Text accessibilityRole="header" className={twMerge('font-display text-[54px] leading-[52px] text-cloud', className)} {...props} />;
+  return <Text accessibilityRole="header" className={twMerge('font-display text-[54px] leading-display tracking-display text-cloud', className)} {...props} />;
 }
 
 export function Label({ className = '', ...props }: TextProps) {
-  return <Text className={twMerge('font-boldface text-[11px] uppercase tracking-[2px] text-muted', className)} {...props} />;
+  return <Text className={twMerge('font-boldface text-[11px] uppercase tracking-label text-muted', className)} {...props} />;
 }
 
 export function Tap({ children, onPress, label, disabled, selected, className = '' }: {
@@ -38,7 +36,7 @@ export function Tap({ children, onPress, label, disabled, selected, className = 
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, selected }}
-      className={`min-h-12 justify-center rounded-[18px] web:focus-visible:outline-2 web:focus-visible:outline-lilac ${className}`}
+      className={`min-h-12 justify-center rounded-[18px] web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${className}`}
       disabled={disabled}
       onPress={onPress}
       onPressIn={() => setPressed(true)}
@@ -48,10 +46,10 @@ export function Tap({ children, onPress, label, disabled, selected, className = 
       <Animated.View
         className="w-full"
         style={reduced ? { opacity: pressed ? 0.88 : 1 } : {
-          transform: [{ scale: pressed ? 0.97 : 1 }],
+          transform: [{ scale: pressed ? 0.96 : 1 }],
           transitionProperty: 'transform',
-          transitionDuration: 120,
-          transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+          transitionDuration: 150,
+          transitionTimingFunction: cubicBezier(0, 0, 0.58, 1),
         }}
       >
         {children}
@@ -67,8 +65,9 @@ export function Button({ children, onPress, tone = 'primary', disabled, arrow = 
   disabled?: boolean;
   arrow?: boolean;
 }) {
+  const { colors: palette } = useAppearance();
   const background = tone === 'primary' ? 'bg-lime' : tone === 'secondary' ? 'border border-line bg-panel' : '';
-  const color = tone === 'primary' ? colors.ink : tone === 'secondary' ? colors.cloud : colors.muted;
+  const color = tone === 'primary' ? palette.ink : tone === 'secondary' ? palette.cloud : palette.muted;
   return (
     <Tap onPress={onPress} disabled={disabled}>
       <View className={`min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-3 ${background} ${disabled ? 'opacity-45' : ''}`}>
@@ -76,17 +75,6 @@ export function Button({ children, onPress, tone = 'primary', disabled, arrow = 
         {arrow && <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={color} strokeWidth={2} />}
       </View>
     </Tap>
-  );
-}
-
-export function Brand() {
-  return (
-    <View className="flex-row items-center gap-2.5">
-      <View className="size-10 -rotate-6 items-center justify-center rounded-[13px] bg-lime">
-        <HugeiconsIcon icon={FlashIcon} color={colors.ink} size={24} strokeWidth={2.4} />
-      </View>
-      <Text className="font-display text-[25px] leading-7 tracking-[0.6px] text-cloud">BLAME GAME</Text>
-    </View>
   );
 }
 
@@ -100,28 +88,29 @@ export function Avatar({ player }: { player: Player }) {
   );
 }
 
-export function PromptCard({ question, label, color = colors.lilac, hero = false }: {
+export function PromptCard({ question, label, color, hero = false }: {
   question: string;
   label: string;
   color?: string;
   hero?: boolean;
 }) {
+  const { colors: palette } = useAppearance();
   return (
     <View className={hero ? 'relative mx-1 mt-2 pb-2' : 'relative'}>
       {hero && (
         <>
-          <View pointerEvents="none" className="absolute inset-x-3 bottom-0 top-4 -rotate-4 rounded-[25px] border border-[#8675af] bg-[#302548]" />
-          <View pointerEvents="none" className="absolute inset-x-2 bottom-1 top-2 rotate-3 rounded-[25px] bg-[#8e71cc]" />
+          <View pointerEvents="none" className="absolute inset-x-3 bottom-0 top-4 -rotate-4 rounded-[25px] border" style={{ borderColor: palette.promptBorder, backgroundColor: palette.promptStack }} />
+          <View pointerEvents="none" className="absolute inset-x-2 bottom-1 top-2 rotate-3 rounded-[25px]" style={{ backgroundColor: palette.promptStackAccent }} />
         </>
       )}
-      <View className={`overflow-hidden rounded-[25px] p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color }}>
+      <View className={`overflow-hidden rounded-[25px] p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color ?? palette.lilac }}>
         <View className="flex-row items-center justify-between gap-2">
           <View className="rounded-full border border-ink/60 px-2.5 py-1.5">
-            <Label className="tracking-[1.1px] text-ink">{label}</Label>
+            <Label className="tracking-label text-ink">{label}</Label>
           </View>
-          <HugeiconsIcon icon={SparklesIcon} color={colors.ink} size={31} strokeWidth={1.7} />
+          <HugeiconsIcon icon={SparklesIcon} color={palette.ink} size={31} strokeWidth={1.7} />
         </View>
-        <Title className={`mt-3 text-ink ${hero ? 'text-[39px] leading-[38px]' : 'text-[42px] leading-[42px]'}`}>
+        <Title className={`mt-3 text-ink ${hero ? 'text-[39px]' : 'text-[42px]'}`}>
           {question}
         </Title>
       </View>
