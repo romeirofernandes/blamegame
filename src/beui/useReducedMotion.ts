@@ -21,7 +21,7 @@ export function useReducedMotionPreference() {
     });
     return () => {
       active = false;
-      subscription.remove();
+      subscription?.remove();
     };
   }, []);
 
