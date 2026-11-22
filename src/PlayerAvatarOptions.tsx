@@ -45,9 +45,7 @@ export function usePlayerAvatar(uid: string | undefined) {
         ? parsedVariant
         : 0;
       const photo = validatePlayerAvatar(storedPhoto);
-      const mode: AvatarMode = storedMode === 'generated' || storedMode === 'photo'
-        ? storedMode
-        : photo ? 'photo' : 'generated';
+      const mode: AvatarMode = storedMode !== 'generated' && photo ? 'photo' : 'generated';
       if (active) setSaved({ uid, photo, avatarSeed, avatarVariant, mode });
     }).catch(() => {
       if (active) setSaved({ uid, avatarSeed: newAvatarSeed(), avatarVariant: 0, mode: 'generated' });
@@ -73,6 +71,9 @@ export function usePlayerAvatar(uid: string | undefined) {
     },
     async selectGeneratedAvatar(avatarVariant: number) {
       if (!variantKey || !modeKey || !uid) return;
+      if (!Number.isInteger(avatarVariant) || avatarVariant < 0 || avatarVariant >= DITHER_AVATAR_VARIANT_COUNT) {
+        throw new Error('Choose a valid generated avatar.');
+      }
       await AsyncStorage.setItem(variantKey, String(avatarVariant));
       await AsyncStorage.setItem(modeKey, 'generated');
       setSaved((current) => current?.uid === uid ? { ...current, avatarVariant, mode: 'generated' } : current);
@@ -200,6 +201,9 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
         </Surface>
       ) : null}
       <Modal
+        accessibilityLabel="Generated avatar options"
+        accessibilityRole="dialog"
+        accessibilityViewIsModal
         animationType={reducedMotion ? "none" : "slide"}
         onDismiss={() => generatedButtonRef.current?.focus?.()}
         onShow={() => closeButtonRef.current?.focus?.()}
@@ -208,7 +212,7 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
         transparent
         visible={drawerOpen}
       >
-        <View accessibilityViewIsModal className="flex-1 justify-end bg-black/60">
+        <View className="flex-1 justify-end bg-black/60">
           <Pressable accessible={false} className="absolute inset-0" onPress={closeDrawer} />
           <View className="max-h-[86%] rounded-t-[28px] border border-line bg-canvas px-5 pt-5" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
             <View className="mb-4 h-1.5 w-10 self-center rounded-full bg-line" aria-hidden />
