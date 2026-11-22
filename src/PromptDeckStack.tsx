@@ -128,7 +128,7 @@ export function PromptDeckStack({
         <View {...panResponder.panHandlers} className="web:[touch-action:pan-y]">
           <Animated.View style={cardStyle}>
             <Tap
-              label={`Prompt ${index + 1} of ${deck.cards.length}: ${question}. Tap or swipe to browse.`}
+              label={`Prompt ${index + 1} of ${deck.cards.length}: ${question} Tap or swipe to browse.`}
               className="items-stretch p-0"
               onPress={() => {
                 // React Native Web can emit a click after the horizontal drag.
