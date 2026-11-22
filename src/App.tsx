@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Share, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, Share, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -10,24 +10,13 @@ import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 import ArrowLeft01Icon from '@hugeicons/core-free-icons/ArrowLeft01Icon';
 import ArrowUpRight01Icon from '@hugeicons/core-free-icons/ArrowUpRight01Icon';
-import Cards01Icon from '@hugeicons/core-free-icons/Cards01Icon';
-import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
-import ComputerIcon from '@hugeicons/core-free-icons/ComputerIcon';
 import Copy01Icon from '@hugeicons/core-free-icons/Copy01Icon';
-import FlashIcon from '@hugeicons/core-free-icons/FlashIcon';
-import Message01Icon from '@hugeicons/core-free-icons/Message01Icon';
-import Moon02Icon from '@hugeicons/core-free-icons/Moon02Icon';
-import Sun03Icon from '@hugeicons/core-free-icons/Sun03Icon';
-import PlayIcon from '@hugeicons/core-free-icons/PlayIcon';
 import UserGroupIcon from '@hugeicons/core-free-icons/UserGroupIcon';
-import VoteIcon from '@hugeicons/core-free-icons/VoteIcon';
-import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
+import LogOutIcon from '@hugeicons/core-free-icons/LogOutIcon';
 import { decks, getDeck } from './decks';
-import { DEMO_PLAYER, demoAction, newDemo } from './demo';
-import { MIN_PLAYERS, MIN_ROUNDS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
+import { MIN_PLAYERS, MIN_ROUNDS, type Mode, type RoomView } from './game';
 import { Body, Button, Field, GameSwitch, hapticSelect, Label, PresenceAvatar, Surface, Tap, Title } from './ui';
 import { PromptDeckStack } from './PromptDeckStack';
 import { useRoom, webOrigin } from './useRoom';
@@ -38,17 +27,21 @@ import { BrandMark } from './BrandMark';
 import { AuthProvider, useAuth } from './auth';
 import { AccountScreen } from './AccountScreen';
 import { PlayerAvatarOptions, usePlayerAvatar } from './PlayerAvatarOptions';
+import { SoundEffectsProvider, useSoundEffects } from './soundEffects';
+import { HowToPlayControls, HowToPlayScreen, howToPlaySlideCount } from './HowToPlayScreen';
 
-type Page = 'home' | 'host' | 'join' | 'account';
+type Page = 'home' | 'host' | 'join' | 'account' | 'guide';
 
 export default function App() {
   const [loaded, error] = useFonts({ GeistPixelSquare, SpaceGrotesk_700Bold, DMSans_500Medium, DMSans_700Bold });
   return (
     <SafeAreaProvider>
       <AppearanceProvider>
-        <AuthProvider>
-          {loaded || error ? <GameApp /> : <View className="flex-1 bg-canvas" />}
-        </AuthProvider>
+        <SoundEffectsProvider>
+          <AuthProvider>
+            {loaded || error ? <GameApp /> : <View className="flex-1 bg-canvas" />}
+          </AuthProvider>
+        </SoundEffectsProvider>
       </AppearanceProvider>
     </SafeAreaProvider>
   );
@@ -61,6 +54,7 @@ function GameApp() {
   const online = useRoom(player, !loading);
   const avatarOptions = usePlayerAvatar(player?.uid);
   const [page, setPage] = useState<Page>('home');
+  const [guideIndex, setGuideIndex] = useState(0);
   const [destination, setDestination] = useState<GameDestination>('play');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -68,17 +62,11 @@ function GameApp() {
   const [mode, setMode] = useState<Mode>('anonymous');
   const [allowSelfVote, setAllowSelfVote] = useState(false);
   const [roundCount, setRoundCount] = useState(10);
-  const [demo, setDemo] = useState<Room | null>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const [signOutBusy, setSignOutBusy] = useState(false);
   const [signOutError, setSignOutError] = useState('');
-  const needsSignIn = !player && (page === 'host' || page === 'join' || !!demo);
-  const room = player ? (demo ? viewRoom(demo, DEMO_PLAYER) : online.room) : null;
-  const demoPlayer = demo && room?.players.find((person) => person.id === DEMO_PLAYER);
-  if (demoPlayer) {
-    demoPlayer.avatar = avatarOptions.avatar;
-    demoPlayer.avatarSeed = avatarOptions.avatarSeed;
-    demoPlayer.avatarVariant = avatarOptions.avatarVariant;
-  }
+  const needsSignIn = !player && (page === 'host' || page === 'join');
+  const room = player ? online.room : null;
   const host = !!room && room.host === room.me;
   const showTabs = !room && !needsSignIn && page === 'home';
   const pickRounds = getDeck(deck)?.cards.some((card) => card.kind === 'pick');
@@ -103,10 +91,6 @@ function GameApp() {
   }
 
   function goHome() {
-    if (demo) {
-      setDemo(null);
-      return;
-    }
     if (page === 'account' && !room) {
       setPage('home');
       setDestination('settings');
@@ -114,16 +98,6 @@ function GameApp() {
     }
     online.leave();
     navigate('home');
-  }
-
-  function startDemo(deckId = decks[0].id) {
-    online.clearError();
-    setDemo(newDemo(deckId));
-  }
-
-  function act(action: Action) {
-    if (demo) setDemo(demoAction(demo, action));
-    else online.send(action);
   }
 
   async function signOutFromSettings() {
@@ -145,6 +119,7 @@ function GameApp() {
         <View className="mx-auto w-full max-w-[480px] flex-1 bg-canvas web:border-x web:border-line/50">
           <DoodleWallpaper />
           <ScrollView
+            ref={scrollRef}
             key={room ? `${room.code}:${room.phase}:${room.round}` : `${destination}:${page}`}
             keyboardShouldPersistTaps="handled"
             className="flex-1"
@@ -153,7 +128,7 @@ function GameApp() {
           >
             <View className={`min-h-12 flex-row items-center justify-between gap-3 ${showTabs && destination === 'play' ? 'mb-5' : 'mb-7'}`}>
               {page !== 'home' || room || needsSignIn ? (
-                <Tap label={room ? 'Leave game' : page === 'account' ? 'Back to settings' : needsSignIn ? 'Back' : 'Back to home'} onPress={goHome} disabled={!room && online.pending} className="w-12 bg-panel">
+                <Tap label={room ? 'Leave game' : page === 'account' ? 'Back to settings' : needsSignIn ? 'Back' : 'Back to home'} onPress={goHome} disabled={!room && online.pending} className="w-12 border border-line bg-panel">
                   <View className="items-center">
                     <HugeiconsIcon icon={ArrowLeft01Icon} color={colors.cloud} size={22} strokeWidth={2} />
                   </View>
@@ -161,8 +136,8 @@ function GameApp() {
               ) : <BrandMark color={colors.cloud} />}
               {room ? (
                 <View className="flex-row items-center gap-2 rounded-full border border-line px-3 py-2">
-                  <View className={`size-1.5 rounded-full ${demo || online.connected ? 'bg-lime-strong' : 'bg-peach-fill'}`} />
-                  <Label className="tracking-[1px]">{demo ? 'Solo demo' : online.connected ? `Room ${room.code}` : 'Reconnecting'}</Label>
+                  <View className={`size-1.5 rounded-full ${online.connected ? 'bg-lime-strong' : 'bg-peach-fill'}`} />
+                  <Label className="tracking-[1px]">{online.connected ? `Room ${room.code}` : 'Reconnecting'}</Label>
                 </View>
               ) : showTabs && destination === 'play' ? (
                 <View className="flex-row items-center gap-1.5 rounded-full border border-line px-3 py-2">
@@ -172,18 +147,18 @@ function GameApp() {
               ) : page !== 'home' ? <BrandMark color={colors.cloud} /> : null}
             </View>
 
-            {!!online.error && !demo && destination === 'play' && (
+            {!!online.error && destination === 'play' && (
               <Body accessibilityRole="alert" className="mb-4 rounded-xl border border-peach/40 bg-panel p-3 text-peach">{online.error}</Body>
             )}
             {room ? (
               room.phase === 'lobby'
-                ? <Lobby room={room} host={host} disabled={!online.connected || online.pending} start={() => act({ type: 'start' })} />
-                : <RoundScreen room={room} host={host} demo={!!demo} act={act} leave={goHome}
-                    disabled={!demo && (!online.connected || online.pending)} />
+                ? <Lobby room={room} host={host} disabled={!online.connected || online.pending} start={() => online.send({ type: 'start' })} />
+                : <RoundScreen room={room} host={host} act={online.send} leave={goHome}
+                    disabled={!online.connected || online.pending} />
             ) : needsSignIn ? (
-              <AccountScreen forPlay />
+              <AccountScreen forPlay onAuthenticated={() => navigate('home')} />
             ) : showTabs && destination === 'decks' ? (
-              <DecksScreen onTry={startDemo} onHost={(deckId) => { setDeck(deckId); navigate('host'); }} />
+              <DecksScreen onHost={(deckId) => { setDeck(deckId); navigate('host'); }} />
             ) : showTabs && destination === 'settings' ? (
               <SettingsScreen
                 appearanceSlot={<AppearanceOptions />}
@@ -202,7 +177,7 @@ function GameApp() {
                   />
                 ) : undefined}
                 accountSlot={
-                  <Surface className="gap-3 rounded-[18px] border border-line bg-panel p-4">
+                  <View className="gap-3">
                     <Body className="text-muted">
                       {loading ? 'Restoring your account…' : user?.email ?? (user?.isAnonymous ? 'Signed in as a guest' : 'Sign in to play.')}
                     </Body>
@@ -213,8 +188,9 @@ function GameApp() {
                         onPress={() => void signOutFromSettings()}
                         disabled={loading || signOutBusy}
                       >
-                        <View className="min-h-14 flex-row items-center justify-center rounded-[18px] border border-peach/40 bg-peach/10 px-4 py-3">
-                          <Text className="font-boldface text-base text-peach">
+                        <View className="min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] bg-peach-fill px-4 py-3">
+                          <HugeiconsIcon icon={LogOutIcon} color={colors.ink} size={20} strokeWidth={1.9} />
+                          <Text className="font-boldface text-base text-ink">
                             {signOutBusy ? 'Signing out…' : 'Sign out'}
                           </Text>
                         </View>
@@ -227,26 +203,25 @@ function GameApp() {
                     {signOutError ? (
                       <Body accessibilityRole="alert" className="text-sm text-peach">{signOutError}</Body>
                     ) : null}
-                  </Surface>
+                  </View>
                 }
               />
             ) : page === 'account' ? (
-              <AccountScreen />
+              <AccountScreen onAuthenticated={() => navigate('home')} />
+            ) : page === 'guide' ? (
+              <HowToPlayScreen slideIndex={guideIndex} />
             ) : page === 'home' ? (
               <View className="grow justify-between">
                 <View className="mb-5">
                   <Title className="text-[56px] leading-[1.1]">WHO, ME?</Title>
                   <Body className="mt-2 max-w-[300px] text-muted">Pick the friend who fits the prompt, then let the group explain itself.</Body>
                 </View>
-                <PromptDeckStack deck={decks[0]} hero />
+                <PromptDeckStack selectedDeckId={deck} onSelect={setDeck} />
                 <View className="gap-2.5 pt-6">
-                  <Button onPress={() => navigate('host')}>Host a game</Button>
+                  <Button className="border border-ink" onPress={() => navigate('host')}>Host a game</Button>
                   <Button tone="secondary" onPress={() => navigate('join')} arrow={false}>Join with a code</Button>
-                  <Tap onPress={() => startDemo()}>
-                    <View className="flex-row items-center justify-center gap-2">
-                      <HugeiconsIcon icon={PlayIcon} size={16} color={colors.lilacStrong} strokeWidth={2} />
-                      <Text className="font-boldface text-sm text-lilac-strong">Try a solo demo</Text>
-                    </View>
+                  <Tap label="How to play" onPress={() => { setGuideIndex(0); navigate('guide'); }} className="min-h-12 rounded-full">
+                    <Text className="text-center font-boldface text-sm text-lilac-strong">How to play</Text>
                   </Tap>
                 </View>
               </View>
@@ -254,7 +229,7 @@ function GameApp() {
               <View className="gap-6">
                 <View>
                   <Title>{page === 'host' ? 'Host a game' : 'Join a game'}</Title>
-                  <Body className="mt-2 text-muted">{page === 'host' ? 'Choose a deck, round count, and what everyone sees at the reveal.' : 'Ask your host for the five-character room code.'}</Body>
+                  <Body className="mt-2 text-muted">{page === 'host' ? 'Set the round count and what everyone sees at the reveal.' : 'Ask your host for the five-character room code.'}</Body>
                 </View>
                 {page === 'join' && (
                   <Field label="Room code" className="tracking-[4px]" value={code}
@@ -265,48 +240,19 @@ function GameApp() {
                   placeholder="e.g. Maya" autoCorrect={false} maxLength={24} />
                 {page === 'host' && (
                   <>
-                    <View className="gap-2">
-                      <Label>Question deck</Label>
-                      {decks.map((item) => {
-                        const active = item.id === deck;
-                        const icon = item.id === 'group-chat' ? Message01Icon
-                          : item.id === 'chaos' ? FlashIcon
-                          : item.id === 'soft-launch' ? VoteIcon
-                          : item.id === 'spotlight' ? PencilEdit01Icon : Cards01Icon;
-                        return (
-                          <Tap key={item.id} selected={active} onPress={() => { hapticSelect(); setDeck(item.id); }}>
-                            <Surface className={`flex-row items-center gap-3 rounded-[18px] border p-3 ${active ? 'border-lilac-strong bg-prompt-stack' : 'border-line bg-panel'}`}>
-                              <View className="size-10 items-center justify-center rounded-[13px]" style={{ backgroundColor: item.color }}>
-                                <HugeiconsIcon icon={icon} color={colors.ink} size={22} strokeWidth={1.9} />
-                              </View>
-                              <View className="flex-1">
-                                <Text className="font-boldface text-base text-cloud">{item.name}</Text>
-                                <Body className="text-sm leading-5 text-muted">{item.description}</Body>
-                              </View>
-                              {active && <HugeiconsIcon icon={CheckmarkCircle02Icon} size={20} color={colors.lilacStrong} />}
-                            </Surface>
-                          </Tap>
-                        );
-                      })}
-                    </View>
-                    <View className="gap-2">
-                      <Label>{pickRounds ? 'Vote visibility' : 'Answer visibility'}</Label>
-                      <View className="flex-row gap-2">
-                        {(['anonymous', 'named'] as const).map((item) => (
-                          <Tap key={item} className="flex-1" selected={mode === item} onPress={() => { hapticSelect(); setMode(item); }}>
-                            <View className={`min-h-12 flex-row flex-wrap items-center justify-center gap-2 rounded-[14px] border px-2 py-2 ${mode === item ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
-                              <VisibilityIcon visible={item === 'named'} color={mode === item ? colors.limeStrong : colors.muted} />
-                              <Text className={`font-boldface text-sm ${mode === item ? 'text-lime-strong' : 'text-muted'}`}>{item === 'anonymous' ? 'Anonymous' : 'Named'}</Text>
-                            </View>
-                          </Tap>
-                        ))}
+                    <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
+                      <View className="flex-1 gap-1">
+                        <Text className="font-boldface text-base text-cloud">{pickRounds ? 'Anonymous votes' : 'Anonymous answers'}</Text>
+                        <Body className="text-sm leading-5 text-muted">
+                          {pickRounds ? 'Hide who voted for whom at reveal.' : 'Hide who wrote each answer at reveal.'}
+                        </Body>
                       </View>
-                      <Body className="text-sm leading-5 text-muted">
-                        {pickRounds
-                          ? mode === 'anonymous' ? 'The reveal shows vote totals and hides who voted.' : 'The reveal shows who voted for whom.'
-                          : mode === 'anonymous' ? 'The reveal shows answers and hides who wrote them.' : 'The reveal shows who wrote each answer.'}
-                      </Body>
-                    </View>
+                      <GameSwitch
+                        accessibilityLabel={pickRounds ? 'Anonymous votes' : 'Anonymous answers'}
+                        value={mode === 'anonymous'}
+                        onValueChange={(anonymous) => { hapticSelect(); setMode(anonymous ? 'anonymous' : 'named'); }}
+                      />
+                    </Surface>
                     <Surface className="gap-3 rounded-[18px] border border-line bg-panel p-4">
                       <View className="flex-row items-center justify-between gap-3">
                         <View className="flex-1 gap-1">
@@ -353,7 +299,7 @@ function GameApp() {
                     )}
                   </>
                 )}
-                {!online.available && <Body className="text-muted">This build has no room server. You can still play a solo demo.</Body>}
+                {!online.available && <Body className="text-muted">This build has no room server, so online rooms are unavailable.</Body>}
                 <Button disabled={!online.ready || !avatarOptions.ready || !name.trim() || online.pending || (page === 'join' && code.length !== 5)}
                   onPress={() => online.send(page === 'host'
                     ? { type: 'create', name, deckId: deck, mode, allowSelfVote, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, roundCount }
@@ -363,6 +309,16 @@ function GameApp() {
               </View>
             )}
           </ScrollView>
+          {page === 'guide' && !room && (
+            <HowToPlayControls
+              slideIndex={guideIndex}
+              onMove={(offset) => {
+                setGuideIndex((index) => Math.min(howToPlaySlideCount - 1, Math.max(0, index + offset)));
+                scrollRef.current?.scrollTo({ y: 0, animated: false });
+              }}
+              onDone={() => navigate('home')}
+            />
+          )}
           {showTabs && <GameTabBar active={destination} onChange={setDestination} />}
         </View>
       </KeyboardAvoidingView>
@@ -371,53 +327,28 @@ function GameApp() {
 }
 
 
-function VisibilityIcon({ visible, color }: { visible: boolean; color: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" accessible={false}>
-      {visible ? (
-        <>
-          <Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
-          <Circle cx={12} cy={12} r={3} />
-        </>
-      ) : (
-        <>
-          <Path d="M3 3l18 18" />
-          <Path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
-          <Path d="M6.6 6.6A11 11 0 0 0 2 12s3.6 7 10 7a10.8 10.8 0 0 0 4.7-1.1" />
-          <Path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.8 15.8 0 0 1-3.1 3.5" />
-        </>
-      )}
-    </Svg>
-  );
-}
-
-const themes = [
-  { id: 'system', label: 'System', icon: ComputerIcon },
-  { id: 'light', label: 'Light', icon: Sun03Icon },
-  { id: 'dark', label: 'Dark', icon: Moon02Icon },
-] as const;
-
 function AppearanceOptions() {
-  const { colors, preference, setPreference } = useAppearance();
+  const { theme, setPreference } = useAppearance();
+  const { enabled, setEnabled } = useSoundEffects();
   return (
-    <View className="flex-row gap-2">
-      {themes.map(({ id, label, icon }) => {
-        const selected = preference === id;
-        return (
-          <Tap
-            key={id}
-            label={label}
-            className="flex-1"
-            selected={selected}
-            onPress={() => { hapticSelect(); setPreference(id); }}
-          >
-            <View className={`min-h-[84px] items-center justify-center gap-2 rounded-[16px] border px-2 py-3 ${selected ? 'border-lilac-strong bg-prompt-stack' : 'border-line bg-panel'}`}>
-              <HugeiconsIcon accessible={false} icon={icon} size={22} color={selected ? colors.lilacStrong : colors.muted} />
-              <Text className="text-center font-boldface text-sm text-cloud">{label}</Text>
-            </View>
-          </Tap>
-        );
-      })}
+    <View className="gap-1">
+      <View className="min-h-14 flex-row items-center justify-between gap-4">
+        <Text className="font-boldface text-base text-cloud">Dark mode</Text>
+        <GameSwitch
+          accessibilityLabel="Dark mode"
+          value={theme === 'dark'}
+          onValueChange={(enabled) => { hapticSelect(); setPreference(enabled ? 'dark' : 'light'); }}
+        />
+      </View>
+      <View className="min-h-14 flex-row items-center justify-between gap-4">
+        <Text className="font-boldface text-base text-cloud">Sound effects</Text>
+        <GameSwitch
+          accessibilityLabel="Sound effects"
+          silent
+          value={enabled}
+          onValueChange={(value) => { hapticSelect(); setEnabled(value); }}
+        />
+      </View>
     </View>
   );
 }

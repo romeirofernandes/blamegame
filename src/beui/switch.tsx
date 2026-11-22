@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppearance } from '../appearance';
 import { useReducedMotionPreference } from './useReducedMotion';
+import { useSoundEffects } from '../soundEffects';
 
 const THUMB_SPRING = { stiffness: 800, damping: 80, mass: 4, reduceMotion: ReduceMotion.System } as const;
 const TRACK_FADE = { duration: 200, reduceMotion: ReduceMotion.System };
@@ -29,6 +30,7 @@ export type GameSwitchProps = Omit<PressableProps, 'children' | 'disabled' | 'on
   onValueChange: (value: boolean) => void;
   accessibilityLabel: string;
   disabled?: boolean;
+  silent?: boolean;
   className?: string;
   style?: PressableProps['style'];
   ref?: Ref<ViewInstance>;
@@ -39,6 +41,7 @@ export function GameSwitch({
   onValueChange,
   accessibilityLabel,
   disabled = false,
+  silent = false,
   className = '',
   style,
   accessibilityState,
@@ -47,7 +50,9 @@ export function GameSwitch({
   ref,
   ...props
 }: GameSwitchProps) {
-  const { colors } = useAppearance();
+  const { colors, theme } = useAppearance();
+  const { play } = useSoundEffects();
+  const activeTrack = theme === 'light' ? colors.limeStrong : colors.lime;
   const reducedMotion = useReducedMotionPreference();
   const animate = !reducedMotion;
   const direction = I18nManager.isRTL ? -1 : 1;
@@ -70,8 +75,8 @@ export function GameSwitch({
   }, [animate, disabled, press]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(track.value, [0, 1], [colors.line, colors.lime]),
-  }), [colors.line, colors.lime]);
+    backgroundColor: interpolateColor(track.value, [0, 1], [colors.line, activeTrack]),
+  }), [colors.line, activeTrack]);
   const thumbStyle = useAnimatedStyle(() => {
     const stretch = SIZE.stretch * press.value;
     return {
@@ -97,7 +102,10 @@ export function GameSwitch({
       hitSlop={{ top: 10, bottom: 10, left: 0, right: 0 }}
       className={`min-h-12 min-w-12 items-center justify-center rounded-full web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${disabled ? 'opacity-60' : ''} ${className}`}
       style={style}
-      onPress={() => onValueChange(!value)}
+      onPress={() => {
+        if (!silent) play('toggle');
+        onValueChange(!value);
+      }}
       onPressIn={(event) => {
         if (animate && !disabled) press.value = withSpring(1, THUMB_SPRING);
         onPressIn?.(event);
@@ -117,7 +125,7 @@ export function GameSwitch({
               start: SIZE.padding,
               height: SIZE.thumb,
               borderRadius: SIZE.thumb / 2,
-              backgroundColor: value ? colors.ink : colors.panel,
+              backgroundColor: value && theme === 'dark' ? colors.ink : '#fff',
             },
             thumbStyle,
           ]}

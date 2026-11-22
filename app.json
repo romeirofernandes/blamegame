@@ -26,6 +26,11 @@
     },
     "plugins": [
       "expo-font",
+      ["expo-audio", {
+        "microphonePermission": false,
+        "recordAudioAndroid": false,
+        "enableBackgroundPlayback": false
+      }],
       ["expo-image-picker", {
         "photosPermission": "Choose a profile photo to share with players in your Blame Game room.",
         "cameraPermission": false,

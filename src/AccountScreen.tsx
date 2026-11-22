@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react';
-import { View, type TextInputInstance } from 'react-native';
+import { Image, View, type TextInputInstance } from 'react-native';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import EyeIcon from '@hugeicons/core-free-icons/EyeIcon';
+import EyeOffIcon from '@hugeicons/core-free-icons/EyeOffIcon';
 import { Tabs, TabsList, TabsTrigger } from './beui/tabs';
-import { Body, Button, Field, Label, Surface, Title } from './ui';
+import { Body, Button, Field, Label, Surface, Tap, Title } from './ui';
+import { useAppearance } from './appearance';
 import { useAuth } from './auth';
 
-type AccountScreenProps = { forPlay?: boolean };
+type AccountScreenProps = { forPlay?: boolean; onAuthenticated: () => void };
 type FormMode = 'signin' | 'signup';
 
 function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout' | 'google', linkingGuest: boolean) {
@@ -46,21 +50,21 @@ function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout' | 
   return 'Unable to sign in. Check your details and try again.';
 }
 
-export function AccountScreen({ forPlay }: AccountScreenProps) {
+export function AccountScreen({ forPlay, onAuthenticated }: AccountScreenProps) {
   const { user, loading, configured, googleSignInAvailable, signIn, signUp, signInWithGoogle, signOut } = useAuth();
+  const { colors } = useAppearance();
   const [mode, setMode] = useState<FormMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [linkedGuestUid, setLinkedGuestUid] = useState<string | null>(null);
   const emailInput = useRef<TextInputInstance | null>(null);
   const passwordInput = useRef<TextInputInstance | null>(null);
   const isGuest = Boolean(user?.isAnonymous);
 
   async function run(action: 'signin' | 'signup' | 'signout') {
     setError('');
-    setLinkedGuestUid(null);
     if (action !== 'signout' && !email.trim()) {
       setError('Enter your email address.');
       emailInput.current?.focus();
@@ -81,10 +85,11 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
         if (guestUid && (signedUpUser.uid !== guestUid || signedUpUser.isAnonymous)) {
           throw Object.assign(new Error('Guest identity changed during account linking.'), { code: 'auth/guest-link-uid-changed' });
         }
-        if (guestUid) setLinkedGuestUid(guestUid);
       }
       if (action === 'signout') await signOut();
       setPassword('');
+      setPasswordVisible(false);
+      if (action !== 'signout') onAuthenticated();
     } catch (cause) {
       setError(errorMessage(cause, action, isGuest));
     } finally {
@@ -94,7 +99,6 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
 
   async function runGoogleSignIn() {
     setError('');
-    setLinkedGuestUid(null);
     setBusy(true);
     try {
       const guestUid = isGuest ? user?.uid : null;
@@ -105,7 +109,7 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
           code: 'auth/guest-link-uid-changed',
         });
       }
-      if (guestUid) setLinkedGuestUid(guestUid);
+      onAuthenticated();
     } catch (cause) {
       const code = (cause as { code?: string } | null)?.code;
       if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
@@ -145,13 +149,6 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
           <Title>Good to see you</Title>
           <Body className="text-muted">{user.email || 'Your account is ready.'}</Body>
         </View>
-        {linkedGuestUid === user.uid && (
-          <Surface className="p-3">
-            <Body className="text-muted">
-              Guest account saved. Your player identity stayed the same.
-            </Body>
-          </Surface>
-        )}
         {!!error && (
           <Surface className="border-peach/40 p-3">
             <Body accessibilityRole="alert" className="text-peach">{error}</Body>
@@ -168,13 +165,12 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
     <View className="gap-6">
       <View className="gap-2">
         <Label className="text-lilac-strong">{isGuest ? 'Guest account' : 'Account'}</Label>
-        <Title>{isGuest ? 'Save your account' : mode === 'signup' ? 'Create an account' : forPlay ? 'Sign in to play' : 'Welcome back'}</Title>
+        <Title>{isGuest ? 'Save your account' : mode === 'signup' ? 'Create account' : forPlay ? 'Sign in to play' : 'Welcome back'}</Title>
         <Body className="text-muted">
           {isGuest
             ? 'Link email and password or Google sign-in to this guest account. Firebase keeps the same player identity.'
-            : mode === 'signup'
-              ? 'Create an account to sign in with email and password.'
-              : forPlay ? 'Sign in or create an account to continue.' : 'Sign in to your account.'}
+            : mode === 'signup' ? 'Set up your account to play.'
+            : forPlay ? 'Sign in or create an account to continue.' : 'Sign in to your account.'}
         </Body>
       </View>
 
@@ -185,6 +181,7 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
           onValueChange={(value) => {
             if (!busy && (value === 'signin' || value === 'signup')) {
               setMode(value);
+              setPasswordVisible(false);
               setError('');
             }
           }}
@@ -197,8 +194,9 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
       )}
 
       {googleSignInAvailable && (
-        <Button tone="secondary" arrow={false} onPress={() => void runGoogleSignIn()} disabled={busy}>
-          {isGuest ? 'Link Google account' : 'Continue with Google'}
+        <Button label={isGuest ? 'Link Google account' : 'Continue with Google'} tone="secondary" arrow={false} onPress={() => void runGoogleSignIn()} disabled={busy}>
+          <Image accessible={false} aria-hidden source={require('../assets/google-mark.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
+          <Body className="text-center font-boldface text-base">{isGuest ? 'Link Google account' : 'Continue with Google'}</Body>
         </Button>
       )}
 
@@ -224,17 +222,27 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
             label="Password"
             ref={passwordInput}
             accessibilityLabel="Password"
+            accessibilityHint={mode === 'signup' ? 'Use at least 6 characters.' : undefined}
             autoComplete={mode === 'signup' || isGuest ? 'new-password' : 'current-password'}
-            className="web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
+            className="pr-14"
             onChangeText={setPassword}
             onSubmitEditing={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')}
             placeholder={mode === 'signup' || isGuest ? 'At least 6 characters' : 'Enter your password'}
             returnKeyType="go"
-            secureTextEntry
+            secureTextEntry={!passwordVisible}
+            trailing={(
+              <Tap
+                label={passwordVisible ? 'Hide password' : 'Show password'}
+                className="size-12 items-center rounded-xl"
+                onPress={() => setPasswordVisible((visible) => !visible)}
+              >
+                <HugeiconsIcon accessible={false} icon={passwordVisible ? EyeOffIcon : EyeIcon} size={22} color={colors.muted} strokeWidth={1.8} />
+              </Tap>
+            )}
             textContentType={mode === 'signup' || isGuest ? 'newPassword' : 'password'}
             value={password}
           />
-          {(mode === 'signup' || isGuest) && <Body className="text-sm leading-5 text-muted">Use at least 6 characters.</Body>}
+          {isGuest && <Body className="text-sm leading-5 text-muted">Use at least 6 characters.</Body>}
         </View>
       </View>
 

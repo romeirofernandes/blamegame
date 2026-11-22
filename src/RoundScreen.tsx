@@ -11,10 +11,9 @@ import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
 import { Body, Button, Field, hapticSelect, Label, PresenceAvatar, PromptCard, Surface, Tap, Title } from './ui';
 
-export function RoundScreen({ room, host, demo, act, leave, disabled }: {
+export function RoundScreen({ room, host, act, leave, disabled }: {
   room: RoomView;
   host: boolean;
-  demo: boolean;
   act: (action: Action) => void;
   leave: () => void;
   disabled: boolean;
@@ -94,7 +93,7 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
             <Surface className="gap-2 p-5">
               <HugeiconsIcon icon={CheckmarkCircle02Icon} size={28} color={colors.limeStrong} strokeWidth={2} />
               <Title className="text-[34px] leading-[36px]" accessibilityLiveRegion="polite">Locked in.</Title>
-              <Body className="text-muted">{demo ? 'Your demo friends have answered, too.' : 'Answers stay sealed until the reveal.'}</Body>
+              <Body className="text-muted">Answers stay sealed until the reveal.</Body>
             </Surface>
           ) : (
             <>

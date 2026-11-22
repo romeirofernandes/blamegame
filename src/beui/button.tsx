@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useReducedMotionPreference } from './useReducedMotion';
+import { useSoundEffects } from '../soundEffects';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const PRESS_SPRING = { stiffness: 500, damping: 30, mass: 0.6 } as const;
@@ -40,11 +41,13 @@ export function ButtonRoot({
   accessibilityState,
   onPressIn,
   onPressOut,
+  onPress,
   pressRetentionOffset,
   ref,
   ...props
 }: ButtonRootProps) {
   const reducedMotion = useReducedMotionPreference();
+  const { play } = useSoundEffects();
   const animate = !reducedMotion && !disableAnimation;
   const scale = useSharedValue(1);
   const pressed = useSharedValue(0);
@@ -72,6 +75,10 @@ export function ButtonRoot({
       className={className}
       style={[style, animatedStyle]}
       pressRetentionOffset={pressRetentionOffset ?? 16}
+      onPress={onPress ? (event) => {
+        play('tap');
+        onPress(event);
+      } : undefined}
       onPressIn={(event) => {
         pressed.value = 1;
         if (animate) scale.value = withSpring(pressScale, PRESS_SPRING);

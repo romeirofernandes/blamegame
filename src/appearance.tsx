@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Appearance, Platform, useColorScheme, View } from 'react-native';
-import Svg, { Circle, Ellipse, G, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Defs, G, Path, Pattern, Rect } from 'react-native-svg';
 import { VariableContextProvider } from 'nativewind';
 
 export type AppearancePreference = 'system' | 'light' | 'dark';
@@ -163,7 +163,27 @@ export function useAppearance() {
   return appearance;
 }
 
-/** Original, decorative chat-room doodles; place first inside a positioned screen container. */
+// Original 32-unit line drawings, arranged in a staggered repeating tile.
+const doodles = [
+  'M5 6h22a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H14l-6 5v-5H5a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3ZM9 15h1m5 0h1m5 0h1', // Chat
+  'M8 4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Zm2 6h.1m12 0h.1m-6 6h.1m-6 6h.1m12 0h.1', // Die
+  'M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5L16 2Z', // Spark
+  'M3 13 29 4l-7 24-7-9-12-6Zm12 6L29 4M6 23l-3 3m8 0-2 4', // Paper plane
+  'M7 9h18a4 4 0 0 1 4 4v6a5 5 0 0 1-5 5c-3 0-4-4-8-4s-5 4-8 4a5 5 0 0 1-5-5v-6a4 4 0 0 1 4-4Zm4 3v7m-3.5-3.5h7m7 0h.1m3-3h.1', // Controller
+  'M16 27 5 17C-3 8 10 2 16 10 22 2 35 8 27 17L16 27Z', // Heart
+  'M11 4h13a3 3 0 0 1 3 3v17M5 11a3 3 0 0 1 3-3h13a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3Zm9.5 2 4 5.5-4 5.5-4-5.5Z', // Cards
+  'M18 2 6 18h9l-1 12 12-17h-9l1-11Z', // Bolt
+  'M6 9h20a3 3 0 0 1 3 3v13H3V12a3 3 0 0 1 3-3Zm-3 7h26m-17-7V5h8v4m-6 7v3h4v-3', // Briefcase
+  'M3 12V5h7m12 0h7v7m0 8v7h-7m-12 0H3v-7m13-10 2 4 5 .6-3.5 3.4.8 4.8-4.3-2.2-4.3 2.2.8-4.8L9 14.6l5-.6Z', // Spotlight
+  'M16 3a13 13 0 1 0 0 26 13 13 0 0 0 0-26ZM10 13h.1m11.9 0h.1M10 19q6 7 12 0', // Smile
+  'M6 20 22 4l6 6L12 26l-8 2 2-8Zm0 0 6 6M18 8l6 6', // Pencil
+  'M8 10a8 8 0 0 1 16-1c0 5-8 6-8 11m0 7h.1', // Question
+  'M4 11 27 7l2 15-23 4L4 11Zm9 5 3 3 5-6', // Ballot
+  'M4 10l24 12-4 5-8-10-7-1-5-6Zm16-4 3-4m3 9 4-2M9 23l-5 5', // Party popper
+  'M4 18c4-9 8-9 12 0s8 9 12 0M9 6l2 3m13-3-2 3', // Squiggle
+];
+
+/** Decorative wallpaper with a fixed motif scale on different screen sizes. */
 export function DoodleWallpaper() {
   const { colors } = useAppearance();
 
@@ -176,99 +196,23 @@ export function DoodleWallpaper() {
       pointerEvents="none"
       className="absolute inset-0 overflow-hidden"
     >
-      <Svg
-        accessible={false}
-        width="100%"
-        height="100%"
-        viewBox="0 0 390 844"
-        preserveAspectRatio="xMidYMid slice"
-        opacity={0.12}
-      >
-        <G opacity={0.36} stroke="none">
-          <Circle cx={36} cy={278} r={24} fill={colors.promptStackAccent} />
-          <Circle cx={348} cy={326} r={30} fill={colors.peachFill} />
-          <Ellipse cx={83} cy={615} rx={34} ry={19} fill={colors.lilac} />
-          <Circle cx={323} cy={749} r={27} fill={colors.promptStackAccent} />
-          <Circle cx={192} cy={425} r={4} fill={colors.lime} />
-          <Circle cx={205} cy={425} r={2} fill={colors.peachFill} />
-        </G>
-        <G fill="none" stroke={colors.doodle} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M103 58c7 4 12 4 19 0m-9-9v18" />
-          <Path d="m252 103 3 7 7 3-7 3-3 7-3-7-7-3 7-3z" />
-          <G transform="rotate(-8 331 292)">
-            <Circle cx={331} cy={292} r={13} />
-            <Circle cx={327} cy={289} r={1.2} fill={colors.doodle} />
-            <Circle cx={335} cy={289} r={1.2} fill={colors.doodle} />
-            <Path d="M327 296q4 4 8 0" />
-          </G>
-          <G transform="rotate(-9 42 102)">
-            <Rect x={18} y={83} width={55} height={36} rx={15} />
-            <Path d="M31 118 25 129l17-10" />
-            <Circle cx={34} cy={101} r={1.7} fill={colors.doodle} />
-            <Circle cx={45} cy={101} r={1.7} fill={colors.doodle} />
-            <Circle cx={56} cy={101} r={1.7} fill={colors.doodle} />
-          </G>
-          <Path d="M305 69c7-10 13-10 20 0s13 10 20 0 13-10 20 0" />
-          <Path d="M333 166c2-9 8-13 17-12 10 1 13 10 6 17l-9 8v5" />
-          <Circle cx={347} cy={194} r={1.6} fill={colors.doodle} />
-          <G transform="rotate(8 78 239)">
-            <SvgText x={27} y={245} fill={colors.doodle} stroke="none" fontSize={21} fontWeight="700" fontStyle="italic">LOL</SvgText>
-            <Path d="M27 251c15 5 31 4 48-1" />
-          </G>
-          <Path d="m176 106 7 10 12-1-8 9 3 12-10-6-10 6 3-12-8-9 12 1z" />
-          <Path d="M260 254c-4-11 2-18 13-15 1-10 13-13 19-4 9-5 18 2 15 12 8 6 4 18-7 19h-29c-9 0-14-5-11-12" />
-          <Path d="M274 255h20m-10-10v20" />
-          <G transform="rotate(-7 93 391)">
-            <Ellipse cx={80} cy={385} rx={31} ry={19} />
-            <Path d="m105 399 11 10-2-16" />
-            <SvgText x={61} y={391} fill={colors.doodle} stroke="none" fontSize={14} fontWeight="700">WHO?</SvgText>
-          </G>
-          <Path d="M216 366c8 9 17 9 26 0s18-9 27 0 18 9 27 0" />
-          <Path d="m330 405 11 11m0-11-11 11" />
-          <G transform="rotate(10 37 545)">
-            <Path d="M21 535c0-9 13-14 19-5 6-9 19-4 19 5 0 12-19 25-19 25s-19-13-19-25z" />
-          </G>
-          <Path d="M145 511c-7-7-14-7-21 0s-14 7-21 0" />
-          <Path d="m270 526 4 11 11 4-11 4-4 11-4-11-11-4 11-4z" />
-          <G transform="rotate(-8 337 625)">
-            <Rect x={305} y={603} width={58} height={37} rx={8} />
-            <Path d="m317 615 7 6 8-8m8 2h14m-30 13 7 6 8-8m8 2h7" />
-          </G>
-          <Path d="M36 704c8-12 16-12 24 0s16 12 24 0 16-12 24 0" />
-          <G transform="rotate(9 195 728)">
-            <SvgText x={163} y={735} fill={colors.doodle} stroke="none" fontSize={18} fontWeight="700" fontStyle="italic">oops</SvgText>
-            <Path d="M164 741c12 3 23 3 34-1" />
-          </G>
-          <Circle cx={152} cy={195} r={4} />
-          <Circle cx={164} cy={195} r={4} />
-          <Path d="M155 209q5 5 10 0" />
-          <Path d="M201 611c9-9 18-9 27 0m-13-13v27" />
-          <Path d="M101 789c9-8 18-8 27 0m-13-13v26" />
-          <G transform="rotate(12 93 327)">
-            <Rect x={75} y={307} width={31} height={39} rx={6} />
-            <Path d="M83 307v-6h30a5 5 0 0 1 5 5v29h-12m-23-9h15m-15 8h10" />
-          </G>
-          <Path d="m54 460 5 8 9 2-7 5 1 9-8-5-8 5 1-9-7-5 9-2z" />
-          <G transform="rotate(-12 326 478)">
-            <Rect x={304} y={456} width={44} height={44} rx={10} />
-            <Circle cx={316} cy={468} r={2} />
-            <Circle cx={326} cy={478} r={2} />
-            <Circle cx={336} cy={488} r={2} />
-          </G>
-          <Path d="m63 629 8 7 15-17m208 109 7 7m0-7-7 7" />
-          <Path d="M137 663c9-9 18-9 27 0s18 9 27 0 18-9 27 0" />
-          <G transform="rotate(7 287 690)">
-            <Rect x={265} y={674} width={43} height={31} rx={12} />
-            <Path d="M276 690h1m9 0h1m-9 7q4 3 8 0" />
-          </G>
-          <Path d="M344 548v21m-7-14h14m-12 8h10" />
-          <Circle cx={38} cy={454} r={2} fill={colors.doodle} />
-          <Circle cx={48} cy={449} r={1.5} fill={colors.doodle} />
-          <Circle cx={58} cy={454} r={2} fill={colors.doodle} />
-          <Circle cx={263} cy={807} r={3} />
-          <Circle cx={275} cy={807} r={3} />
-          <Path d="M265 818q5 4 10 0" />
-        </G>
+      <Svg accessible={false} width="100%" height="100%">
+        <Defs>
+          <Pattern id="game-doodles" width={256} height={224} patternUnits="userSpaceOnUse">
+            <G fill="none" stroke={colors.doodle} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.15}>
+              {doodles.map((path, index) => {
+                const row = Math.floor(index / 4);
+                const column = index % 4;
+                const x = 6 + column * 64 + (row % 2) * 20;
+                const y = 9 + row * 56 + (column % 2) * 6;
+                const rotation = [-12, 10, -6, 16][(column + row) % 4];
+                return <Path key={path} d={path} transform={`translate(${x} ${y}) rotate(${rotation} 16 16)`} />;
+              })}
+              <Path d="M52 45h.1m67 3h.1m58-4h.1m63 5h.1M8 101h.1m70 4h.1m65-5h.1m63 4h.1M52 157h.1m67 3h.1m58-4h.1m63 5h.1M8 213h.1m70 4h.1m65-5h.1m63 4h.1" strokeWidth={2.5} />
+            </G>
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#game-doodles)" />
       </Svg>
     </View>
   );

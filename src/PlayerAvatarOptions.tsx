@@ -4,11 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRandomValues } from 'expo-crypto';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import ImageUpload01Icon from '@hugeicons/core-free-icons/ImageUpload01Icon';
+import { useAppearance } from './appearance';
 import { validatePlayerAvatar } from './avatar';
 import { DITHER_AVATAR_VARIANT_COUNT } from './dither-avatar';
-import { Avatar, Body, Button, Surface, Tap, Title } from './ui';
+import { Avatar, Body, Button, Tap, Title } from './ui';
 import { useReducedMotionPreference } from './beui/useReducedMotion';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type AvatarMode = 'photo' | 'generated';
 
@@ -100,10 +102,16 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const insets = useSafeAreaInsets();
+  const { colors } = useAppearance();
   const reducedMotion = useReducedMotionPreference();
-  const generatedButtonRef = useRef<ViewInstance>(null);
+  const avatarButtonRef = useRef<ViewInstance>(null);
   const closeButtonRef = useRef<ViewInstance>(null);
+  const drawerWasOpen = useRef(false);
+
+  useEffect(() => {
+    if (drawerWasOpen.current && !drawerOpen) avatarButtonRef.current?.focus?.();
+    drawerWasOpen.current = drawerOpen;
+  }, [drawerOpen]);
 
   function closeDrawer() {
     setDrawerOpen(false);
@@ -134,6 +142,7 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
     setError('');
     try {
       await useSavedPhoto();
+      setDrawerOpen(false);
     } catch {
       setError('Couldn’t use your saved photo. Try again.');
     } finally {
@@ -165,6 +174,7 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
       const photo = validatePlayerAvatar(`data:image/jpeg;base64,${result.base64 ?? ''}`);
       if (!photo) throw new Error('Photo could not be resized.');
       await update(photo);
+      setDrawerOpen(false);
     } catch {
       setError('Couldn’t save that photo. Try a different image.');
     } finally {
@@ -173,82 +183,78 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
   }
 
   return (
-    <Surface className="gap-3 p-4">
-      <View className="flex-row items-center gap-3">
-        <Avatar player={{ id: seed, avatar, avatarVariant }} />
-        <Body className="flex-1 text-sm text-muted">Everyone in your next room can see this avatar.</Body>
-      </View>
-      <Button tone="secondary" arrow={false} onPress={() => void choosePhoto()} disabled={!ready || busy}>
-        {busy ? 'Updating avatar…' : hasPhoto ? 'Change photo' : 'Choose photo'}
-      </Button>
-      <Button
-        ref={generatedButtonRef}
-        tone="quiet"
-        arrow={false}
+    <View className="gap-3">
+      <Tap
+        ref={avatarButtonRef}
+        label="Change avatar"
         onPress={openDrawer}
         disabled={!ready || busy}
+        className="min-h-14 flex-row items-center gap-3 rounded-xl"
       >
-        {mode === 'photo' ? 'Use generated avatar' : 'Change generated avatar'}
-      </Button>
-      {mode === 'generated' && hasPhoto ? (
-        <Button tone="quiet" arrow={false} onPress={() => void chooseSavedPhoto()} disabled={busy}>
-          Use saved photo
-        </Button>
-      ) : null}
-      {error ? (
-        <Surface className="border-peach/40 px-3 py-2">
-          <Body accessibilityRole="alert" className="text-sm text-peach">{error}</Body>
-        </Surface>
-      ) : null}
+        <Avatar player={{ id: seed, avatar, avatarVariant }} />
+        <Body className="flex-1 font-boldface text-cloud">Change avatar</Body>
+      </Tap>
       <Modal
-        accessibilityLabel="Generated avatar options"
+        accessibilityLabel="Choose an avatar"
         accessibilityRole="dialog"
         accessibilityViewIsModal
-        animationType={reducedMotion ? "none" : "slide"}
-        onDismiss={() => generatedButtonRef.current?.focus?.()}
+        animationType={reducedMotion ? "none" : "fade"}
+        onDismiss={() => avatarButtonRef.current?.focus?.()}
         onShow={() => closeButtonRef.current?.focus?.()}
         onRequestClose={closeDrawer}
         presentationStyle="overFullScreen"
         transparent
         visible={drawerOpen}
       >
-        <View className="flex-1 justify-end bg-black/60">
+        <View className="flex-1 items-center justify-center bg-black/50 px-5 py-8">
           <Pressable accessible={false} className="absolute inset-0" onPress={closeDrawer} />
-          <View className="max-h-[86%] rounded-t-[28px] border border-line bg-canvas px-5 pt-5" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
-            <View className="mb-4 h-1.5 w-10 self-center rounded-full bg-line" aria-hidden />
-            <Title className="text-[28px] leading-8">Generated avatar</Title>
-            <Body className="mt-2 text-sm text-muted">Choose a dither pattern. Your saved photo stays here if you want it back.</Body>
+          <View className="w-full max-w-[420px] overflow-hidden rounded-[24px] border border-line bg-canvas px-5 pt-5 pb-5" style={{ maxHeight: '86%' }}>
+            <Title className="text-[28px] leading-8">Choose an avatar</Title>
+            <Body className="mt-2 text-sm text-muted">Pick a pattern or upload a photo.</Body>
             {error ? (
-              <Surface className="mt-3 border-peach/40 px-3 py-2">
-                <Body accessibilityRole="alert" className="text-sm text-peach">{error}</Body>
-              </Surface>
+              <Body accessibilityRole="alert" className="mt-3 rounded-xl bg-peach/10 px-3 py-2 text-sm text-peach">{error}</Body>
             ) : null}
-            <ScrollView className="mt-5" contentContainerClassName="flex-row flex-wrap gap-2 pb-2" showsVerticalScrollIndicator={false}>
-              {Array.from({ length: DITHER_AVATAR_VARIANT_COUNT }, (_, variant) => {
-                const selected = mode === 'generated' && avatarVariant === variant;
-                return (
-                  <Tap
-                    key={variant}
-                    label={`Pattern ${variant + 1}, use generated avatar`}
-                    aria-pressed={selected}
-                    onPress={() => void chooseGenerated(variant)}
-                    disabled={busy}
-                    className="w-[31%]"
-                  >
-                    <Surface className={`min-h-[92px] w-full items-center justify-center gap-1 rounded-[16px] border p-2 ${selected ? 'border-lime-strong bg-prompt-stack' : 'border-line bg-panel'}`}>
-                      <Avatar player={{ id: seed, avatarVariant: variant }} />
-                      <Body className="text-center text-xs text-cloud">Pattern {variant + 1}</Body>
-                    </Surface>
-                  </Tap>
-                );
-              })}
+            <ScrollView className="mt-5 flex-1" contentContainerClassName="gap-3 pb-3" showsVerticalScrollIndicator={false}>
+              {Array.from({ length: Math.ceil(DITHER_AVATAR_VARIANT_COUNT / 4) }, (_, row) => (
+                <View key={row} className="flex-row gap-3">
+                  {Array.from({ length: 4 }, (_, column) => row * 4 + column).map((variant) => {
+                    if (variant >= DITHER_AVATAR_VARIANT_COUNT) return <View key={variant} className="flex-1" />;
+                    const selected = mode === 'generated' && avatarVariant === variant;
+                    return (
+                      <Tap
+                        key={variant}
+                        label={`Generated avatar choice ${variant + 1}`}
+                        aria-pressed={selected}
+                        onPress={() => void chooseGenerated(variant)}
+                        disabled={busy}
+                        className="flex-1"
+                      >
+                        <View className={`min-h-16 w-full items-center justify-center rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
+                          <Avatar player={{ id: seed, avatarVariant: variant }} />
+                        </View>
+                      </Tap>
+                    );
+                  })}
+                </View>
+              ))}
             </ScrollView>
+            {mode === 'generated' && hasPhoto ? (
+              <Button tone="quiet" arrow={false} onPress={() => void chooseSavedPhoto()} disabled={busy} className="mb-2">
+                Use saved photo
+              </Button>
+            ) : null}
+            <Button label="Upload a photo" tone="secondary" arrow={false} onPress={() => void choosePhoto()} disabled={!ready || busy} className="mb-2">
+              <>
+                <HugeiconsIcon accessible={false} icon={ImageUpload01Icon} size={20} color={colors.cloud} strokeWidth={1.8} />
+                <Body className="font-boldface text-base">Upload a photo</Body>
+              </>
+            </Button>
             <Button ref={closeButtonRef} tone="secondary" arrow={false} onPress={closeDrawer}>
               Close
             </Button>
           </View>
         </View>
       </Modal>
-    </Surface>
+    </View>
   );
 }

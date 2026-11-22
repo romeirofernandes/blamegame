@@ -1,6 +1,6 @@
 // Adapted from beUI Native Input (MIT).
 // Source: https://github.com/starc007/beui-native/tree/main/src/components/input
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputInstance, type TextInputProps, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { twMerge } from 'tailwind-merge';
@@ -12,6 +12,7 @@ const COLOR_FADE = { duration: 200 };
 
 export type FieldProps = TextInputProps & {
   label: string;
+  trailing?: ReactNode;
   className?: string;
   ref?: Ref<TextInputInstance>;
 };
@@ -21,6 +22,7 @@ const INPUT_CLASSES =
 
 export function Field({
   label,
+  trailing,
   className = '',
   accessibilityLabel,
   keyboardAppearance,
@@ -85,6 +87,7 @@ export function Field({
             onBlur?.(event);
           }}
         />
+        {trailing && <View className="absolute bottom-0 right-1 top-0 justify-center">{trailing}</View>}
       </View>
     </View>
   );

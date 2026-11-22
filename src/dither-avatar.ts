@@ -112,12 +112,12 @@ function bitmapToPath(pixels: number[][]): string {
   return parts.join("")
 }
 
-function generateColors(seed: string): {
+function generateColors(seed: string, hueOffset = 0): {
   fill: string
   stroke: string
 } {
   const [hueHash] = hashMultiple(seed, 1)
-  const hue = hueHash % 360
+  const hue = (hueHash + hueOffset) % 360
   return {
     fill: hslToHex(hue, 85, 30),
     stroke: hslToHex(hue, 90, 65),
@@ -128,7 +128,7 @@ export const DITHER_AVATAR_VARIANT_COUNT = 8;
 
 export function ditherAvatar(seed: string, variant = 0) {
   const variantSeed = variant === 0 ? seed : `${seed}:variant:${variant}`;
-  const { fill, stroke } = generateColors(variantSeed)
+  const { fill, stroke } = generateColors(seed, variant * 45)
   const density = generateDensityGrid(variantSeed)
   const pixels = dither(density)
   const path = bitmapToPath(pixels)

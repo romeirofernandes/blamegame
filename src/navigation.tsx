@@ -1,15 +1,15 @@
 import { type ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import Cards01Icon from "@hugeicons/core-free-icons/Cards01Icon";
 import PlayIcon from "@hugeicons/core-free-icons/PlayIcon";
 import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon";
 import { decks } from "./decks";
-import { useAppearance } from "./appearance";
-import { Body, Label, Surface, Tap, Title, hapticSelect } from "./ui";
+import { deckArt } from "./deckArt";
+import { Body, Button, Label, Surface, Tap, Title, hapticSelect } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "./beui/tabs";
-import { PromptDeckStack } from "./PromptDeckStack";
+import { useSoundEffects } from "./soundEffects";
 
 export type GameDestination = "play" | "decks" | "settings";
 
@@ -31,6 +31,7 @@ export function GameTabBar({
   active: GameDestination;
   onChange: (destination: GameDestination) => void;
 }) {
+  const { play } = useSoundEffects();
   return (
     <SafeAreaView edges={["bottom"]} className="border-t border-line/40 bg-panel">
       <Tabs
@@ -38,6 +39,7 @@ export function GameTabBar({
         values={destinationIds}
         onValueChange={(value) => {
           if (value === active || !destinationIds.includes(value as GameDestination)) return;
+          play("tap");
           hapticSelect();
           onChange(value as GameDestination);
         }}
@@ -70,82 +72,60 @@ export function GameTabBar({
 
 export function DecksScreen({
   onHost,
-  onTry,
 }: {
   onHost: (deckId: string) => void;
-  onTry: (deckId: string) => void;
 }) {
-  const { colors } = useAppearance();
   return (
     <View className="gap-6">
       <View>
         <Title className="text-[48px] leading-display">The decks</Title>
         <Body className="mt-2 max-w-[310px] text-muted">
-          Pick a mood for the room or try a deck solo.
+          Pick a mood for the room.
         </Body>
       </View>
-
       <View className="gap-4">
         {decks.map((deck) => {
           const sample = deck.cards[0];
           return (
-            <Surface
-              key={deck.id}
-              className="overflow-hidden rounded-[24px] border border-line bg-panel"
-            >
+            <Surface key={deck.id} className="overflow-hidden rounded-[24px] border border-line bg-panel">
               <View className="gap-4 p-4">
                 <View className="flex-row items-start justify-between gap-3">
                   <View className="min-w-0 flex-1 gap-1">
                     <Label className="text-lilac-strong">{deck.label}</Label>
-                    <Text
-                      accessibilityRole="header"
-                      className="font-display text-[22px] leading-7 text-cloud"
-                    >
-                      {deck.name}
-                    </Text>
-                    <Body className="text-sm leading-5 text-muted">
-                      {deck.description}
-                    </Body>
+                    <Text accessibilityRole="header" className="font-display text-[22px] leading-7 text-cloud">{deck.name}</Text>
+                    <Body className="text-sm leading-5 text-muted">{deck.description}</Body>
                   </View>
-                  <View
-                    style={{ backgroundColor: deck.color }}
-                    className="size-9 shrink-0 rotate-3 items-center justify-center rounded-[12px]"
-                  >
-                    <HugeiconsIcon
-                      accessible={false}
-                      icon={Cards01Icon}
-                      color={colors.ink}
-                      size={21}
-                      strokeWidth={1.9}
-                    />
-                  </View>
+                  <Image
+                    source={deckArt[deck.id]}
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                    pointerEvents="none"
+                    resizeMode="contain"
+                    style={{ width: 64, height: 64, flexShrink: 0 }}
+                  />
                 </View>
 
                 {sample && (
                   <View className="gap-2">
                     <Label className="text-muted">
-                      {deck.cards.length} prompts ·{" "}
                       {sample.kind === "pick" ? "pick a person" : "write an answer"}
                     </Label>
-                    <PromptDeckStack deck={deck} />
+                    <Surface className="gap-2 rounded-[18px] border border-line/60 bg-canvas p-4">
+                      <Label>Sample prompt</Label>
+                      <Body className="font-display text-lg leading-6">{sample.question.replace("{player}", "Maya")}</Body>
+                    </Surface>
                   </View>
                 )}
 
                 <View className="flex-row flex-wrap items-center justify-between gap-3">
-                  <Tap
-                    label={`Try ${deck.name} solo`}
-                    className="min-h-12 justify-center rounded-full px-3 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
-                    onPress={() => onTry(deck.id)}
-                  >
-                    <Text className="font-boldface text-sm text-lilac-strong">Try solo</Text>
-                  </Tap>
-                  <Tap
-                    label={`Host with ${deck.name}`}
-                    className="min-h-12 justify-center rounded-full border border-line px-4 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
+                  <Button
+                    className="flex-1"
+                    label={`Host a game with ${deck.name}`}
                     onPress={() => onHost(deck.id)}
                   >
-                    <Text className="font-boldface text-sm text-cloud">Host with deck</Text>
-                  </Tap>
+                    Host with deck
+                  </Button>
                 </View>
               </View>
             </Surface>
@@ -165,22 +145,14 @@ export function SettingsScreen({
   avatarSlot?: ReactNode;
   accountSlot: ReactNode;
 }) {
-  const description = avatarSlot
-    ? "Set your theme and avatar, and manage your account."
-    : "Choose a theme and manage your account.";
-
   return (
     <View className="gap-6">
-      <View>
-        <Title className="text-[48px] leading-display">Settings</Title>
-        <Body className="mt-2 max-w-[310px] text-muted">{description}</Body>
-      </View>
-
-      <SettingsSection title="Appearance" surface>{appearanceSlot}</SettingsSection>
-      {avatarSlot && (
-        <SettingsSection title="Avatar">{avatarSlot}</SettingsSection>
-      )}
-      <SettingsSection title="Account">{accountSlot}</SettingsSection>
+      <Title className="text-[38px] leading-display">Settings</Title>
+      <SettingsSection title="Preferences">{appearanceSlot}</SettingsSection>
+      <SettingsSection title="Account">
+        {avatarSlot && <View className="mb-3 border-b border-line/60 pb-2">{avatarSlot}</View>}
+        {accountSlot}
+      </SettingsSection>
     </View>
   );
 }
@@ -188,27 +160,14 @@ export function SettingsScreen({
 function SettingsSection({
   title,
   children,
-  surface = false,
 }: {
   title: string;
   children: ReactNode;
-  surface?: boolean;
 }) {
   return (
-    <View className="gap-3">
-      <Text
-        accessibilityRole="header"
-        className="font-display text-xl leading-6 text-cloud"
-      >
-        {title}
-      </Text>
-      {surface ? (
-        <Surface className="gap-3 rounded-[20px] border border-line bg-panel p-4">
-          {children}
-        </Surface>
-      ) : (
-        <View className="gap-3">{children}</View>
-      )}
+    <View className="gap-2">
+      <Label accessibilityRole="header" className="pl-1 text-xs tracking-[1px]">{title}</Label>
+      <Surface className="rounded-[20px] border border-line bg-panel px-4 py-3">{children}</Surface>
     </View>
   );
 }
