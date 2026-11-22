@@ -6,7 +6,7 @@ a party game for 3–12 friends. pick a deck, vote for who fits the prompt, and 
 
 ## get the app
 
-[Android downloads on GitHub Releases](https://github.com/romeirofernandes/blamegame/releases). the first APK will go here once the room server is live.
+[Download the Android APK](https://github.com/romeirofernandes/blamegame/releases/download/v1.0.0/blame-game.apk) for Android 7 or newer on a 64-bit device. the [release notes](https://github.com/romeirofernandes/blamegame/releases/tag/v1.0.0) have the checksum and Google sign-in setup.
 
 play in your browser at [blame-game.theromeirofernandes.workers.dev](https://blame-game.theromeirofernandes.workers.dev). host a game and send the room code or invite link to your friends.
 
@@ -34,7 +34,8 @@ the [Cloudflare Worker](https://developers.cloudflare.com/workers/) serves the w
 for a standalone APK, set `EXPO_PUBLIC_SERVER_URL` to the Worker’s HTTPS origin at build time. Android Google sign-in also needs the APK signing certificate’s SHA-1 registered on the Firebase Android app (`com.blame.game`).
 
 ```sh
-EXPO_PUBLIC_SERVER_URL=https://your-worker.workers.dev bunx eas-cli build --platform android --profile preview
+bunx eas-cli env:set --name EXPO_PUBLIC_SERVER_URL --value https://your-worker.workers.dev --environment preview --visibility plaintext
+bunx eas-cli build --platform android --profile preview
 ```
 
 for an EAS cloud build, supply `GOOGLE_SERVICES_JSON` as a file environment variable in the build environment.
