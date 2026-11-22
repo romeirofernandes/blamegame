@@ -1,0 +1,19 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+@theme {
+  --color-ink: #15131d;
+  --color-canvas: #100e16;
+  --color-panel: #211e2d;
+  --color-line: #3e384e;
+  --color-cloud: #fbf7ff;
+  --color-muted: #bab1cb;
+  --color-lilac: #c8adff;
+  --color-lime: #e2fc67;
+  --color-peach: #ffb199;
+  --font-display: BarlowCondensed_900Black;
+  --font-body: DMSans_500Medium;
+  --font-boldface: DMSans_700Bold;
+}

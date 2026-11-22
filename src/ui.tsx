@@ -1,0 +1,134 @@
+import { useState, type ReactNode } from 'react';
+import { Platform, Pressable, Text, View, type TextProps } from 'react-native';
+import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
+import FlashIcon from '@hugeicons/core-free-icons/FlashIcon';
+import SparklesIcon from '@hugeicons/core-free-icons/SparklesIcon';
+import * as Haptics from 'expo-haptics';
+import { twMerge } from 'tailwind-merge';
+import type { Player } from './game';
+
+export const colors = { ink: '#15131d', cloud: '#fbf7ff', muted: '#bab1cb', lilac: '#c8adff', lime: '#e2fc67' };
+
+export function Body({ className = '', ...props }: TextProps) {
+  return <Text className={twMerge('font-body text-base leading-6 text-cloud', className)} {...props} />;
+}
+
+export function Title({ className = '', ...props }: TextProps) {
+  return <Text accessibilityRole="header" className={twMerge('font-display text-[54px] leading-[52px] text-cloud', className)} {...props} />;
+}
+
+export function Label({ className = '', ...props }: TextProps) {
+  return <Text className={twMerge('font-boldface text-[11px] uppercase tracking-[2px] text-muted', className)} {...props} />;
+}
+
+export function Tap({ children, onPress, label, disabled, selected, className = '' }: {
+  children: ReactNode;
+  onPress: () => void;
+  label?: string;
+  disabled?: boolean;
+  selected?: boolean;
+  className?: string;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const reduced = useReducedMotion();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, selected }}
+      className={`min-h-12 justify-center rounded-[18px] web:focus-visible:outline-2 web:focus-visible:outline-lilac ${className}`}
+      disabled={disabled}
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      pressRetentionOffset={16}
+    >
+      <Animated.View
+        className="w-full"
+        style={reduced ? { opacity: pressed ? 0.88 : 1 } : {
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+          transitionProperty: 'transform',
+          transitionDuration: 120,
+          transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+        }}
+      >
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+export function Button({ children, onPress, tone = 'primary', disabled, arrow = true }: {
+  children: string;
+  onPress: () => void;
+  tone?: 'primary' | 'secondary' | 'quiet';
+  disabled?: boolean;
+  arrow?: boolean;
+}) {
+  const background = tone === 'primary' ? 'bg-lime' : tone === 'secondary' ? 'border border-line bg-panel' : '';
+  const color = tone === 'primary' ? colors.ink : tone === 'secondary' ? colors.cloud : colors.muted;
+  return (
+    <Tap onPress={onPress} disabled={disabled}>
+      <View className={`min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-3 ${background} ${disabled ? 'opacity-45' : ''}`}>
+        <Text className="text-center font-boldface text-base" style={{ color }}>{children}</Text>
+        {arrow && <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={color} strokeWidth={2} />}
+      </View>
+    </Tap>
+  );
+}
+
+export function Brand() {
+  return (
+    <View className="flex-row items-center gap-2.5">
+      <View className="size-10 -rotate-6 items-center justify-center rounded-[13px] bg-lime">
+        <HugeiconsIcon icon={FlashIcon} color={colors.ink} size={24} strokeWidth={2.4} />
+      </View>
+      <Text className="font-display text-[25px] leading-7 tracking-[0.6px] text-cloud">BLAME GAME</Text>
+    </View>
+  );
+}
+
+const avatarColors = ['#e2fc67', '#ffb199', '#c8adff', '#9eead9', '#ffb9da', '#ffe184'];
+
+export function Avatar({ player }: { player: Player }) {
+  return (
+    <View className="size-10 items-center justify-center rounded-full" style={{ backgroundColor: avatarColors[player.color] }}>
+      <Text className="font-boldface text-base text-ink">{Array.from(player.name)[0].toUpperCase()}</Text>
+    </View>
+  );
+}
+
+export function PromptCard({ question, label, color = colors.lilac, hero = false }: {
+  question: string;
+  label: string;
+  color?: string;
+  hero?: boolean;
+}) {
+  return (
+    <View className={hero ? 'relative mx-1 mt-2 pb-2' : 'relative'}>
+      {hero && (
+        <>
+          <View pointerEvents="none" className="absolute inset-x-3 bottom-0 top-4 -rotate-4 rounded-[25px] border border-[#8675af] bg-[#302548]" />
+          <View pointerEvents="none" className="absolute inset-x-2 bottom-1 top-2 rotate-3 rounded-[25px] bg-[#8e71cc]" />
+        </>
+      )}
+      <View className={`overflow-hidden rounded-[25px] p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color }}>
+        <View className="flex-row items-center justify-between gap-2">
+          <View className="rounded-full border border-ink/60 px-2.5 py-1.5">
+            <Label className="tracking-[1.1px] text-ink">{label}</Label>
+          </View>
+          <HugeiconsIcon icon={SparklesIcon} color={colors.ink} size={31} strokeWidth={1.7} />
+        </View>
+        <Title className={`mt-3 text-ink ${hero ? 'text-[39px] leading-[38px]' : 'text-[42px] leading-[42px]'}`}>
+          {question}
+        </Title>
+      </View>
+    </View>
+  );
+}
+
+export function hapticSelect() {
+  if (Platform.OS !== 'web') void Haptics.selectionAsync().catch(() => {});
+}
