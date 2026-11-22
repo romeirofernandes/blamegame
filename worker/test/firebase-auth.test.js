@@ -9,7 +9,7 @@ test('only accepts signed, unexpired ID tokens with the configured Firebase issu
   const key = { ...(await exportJWK(publicKey)), kid, alg: 'RS256', use: 'sig' };
   const fetchKeys = spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ keys: [key] }));
   try {
-    const token = ({ audience = projectId, expires = '5m' } = {}) => new SignJWT({})
+    const token = ({ audience = projectId, expires = '5m', provider = 'password' } = {}) => new SignJWT({ firebase: { sign_in_provider: provider } })
       .setProtectedHeader({ alg: 'RS256', kid })
       .setIssuer(`https://securetoken.google.com/${projectId}`)
       .setAudience(audience)
@@ -21,6 +21,7 @@ test('only accepts signed, unexpired ID tokens with the configured Firebase issu
     expect(await verifyFirebaseIdToken(await token(), projectId)).toBe('player-one');
     await expect(verifyFirebaseIdToken(await token({ audience: 'different-project' }), projectId)).rejects.toThrow();
     await expect(verifyFirebaseIdToken(await token({ expires: -1 }), projectId)).rejects.toThrow();
+    await expect(verifyFirebaseIdToken(await token({ provider: 'anonymous' }), projectId)).rejects.toThrow();
   } finally {
     fetchKeys.mockRestore();
   }

@@ -52,7 +52,8 @@ export default function App() {
 function GameApp() {
   const { colors, theme } = useAppearance();
   const { user, loading, configured } = useAuth();
-  const online = useRoom(user, !loading);
+  const player = !loading && user && !user.isAnonymous ? user : null;
+  const online = useRoom(player, !loading);
   const [page, setPage] = useState<Page>('home');
   const [destination, setDestination] = useState<GameDestination>('play');
   const [name, setName] = useState('');
@@ -60,9 +61,10 @@ function GameApp() {
   const [deck, setDeck] = useState(decks[0].id);
   const [mode, setMode] = useState<Mode>('anonymous');
   const [demo, setDemo] = useState<Room | null>(null);
-  const room = demo ? viewRoom(demo, DEMO_PLAYER) : online.room;
+  const needsSignIn = !player && (page === 'host' || page === 'join' || !!demo);
+  const room = player ? (demo ? viewRoom(demo, DEMO_PLAYER) : online.room) : null;
   const host = !!room && room.host === room.me;
-  const showTabs = !room && page === 'home';
+  const showTabs = !room && !needsSignIn && page === 'home';
 
   useEffect(() => {
     function acceptInvite(url: string) {
@@ -121,8 +123,8 @@ function GameApp() {
             contentContainerClassName="grow px-6 pb-8 pt-5"
           >
             <View className="mb-7 min-h-12 flex-row items-center justify-between gap-3">
-              {page !== 'home' || room ? (
-                <Tap label={room ? 'Leave game' : page === 'account' ? 'Back to settings' : 'Back to home'} onPress={goHome} disabled={!room && online.pending} className="w-12 bg-panel">
+              {page !== 'home' || room || needsSignIn ? (
+                <Tap label={room ? 'Leave game' : page === 'account' ? 'Back to settings' : needsSignIn ? 'Back' : 'Back to home'} onPress={goHome} disabled={!room && online.pending} className="w-12 bg-panel">
                   <View className="items-center">
                     <HugeiconsIcon icon={ArrowLeft01Icon} color={colors.cloud} size={22} strokeWidth={2} />
                   </View>
@@ -149,6 +151,8 @@ function GameApp() {
                 ? <Lobby room={room} host={host} disabled={!online.connected || online.pending} start={() => act({ type: 'start' })} />
                 : <RoundScreen room={room} host={host} demo={!!demo} act={act} leave={goHome}
                     disabled={!demo && (!online.connected || online.pending)} />
+            ) : needsSignIn ? (
+              <AccountScreen forPlay />
             ) : showTabs && destination === 'decks' ? (
               <DecksScreen onTry={startDemo} onHost={(deckId) => { setDeck(deckId); navigate('host'); }} />
             ) : showTabs && destination === 'settings' ? (
@@ -157,7 +161,7 @@ function GameApp() {
                 accountSlot={
                   <View className="gap-3 rounded-[18px] border border-line bg-panel p-4">
                     <Body className="text-muted">
-                      {loading ? 'Restoring your account…' : user?.email ?? (user?.isAnonymous ? 'Signed in as a guest' : 'Play with a nickname or sign in with an email address.')}
+                      {loading ? 'Restoring your account…' : user?.email ?? (user?.isAnonymous ? 'Signed in as a guest' : 'Sign in with an email address to play.')}
                     </Body>
                     <Button tone="secondary" onPress={() => setPage('account')} disabled={loading}>
                       {user ? 'Manage account' : configured ? 'Sign in or create account' : 'Account setup'}

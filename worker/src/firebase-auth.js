@@ -16,6 +16,9 @@ export async function verifyFirebaseIdToken(idToken, projectId) {
     algorithms: ['RS256'],
     requiredClaims: ['sub', 'iat', 'exp'],
   });
+  if (typeof payload.firebase?.sign_in_provider !== 'string' || payload.firebase.sign_in_provider === 'anonymous') {
+    throw new Error('Sign in with an account to play.');
+  }
   if (typeof payload.sub !== 'string' || !payload.sub) throw new Error('Invalid Firebase ID token.');
   return payload.sub;
 }

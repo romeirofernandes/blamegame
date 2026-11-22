@@ -33,7 +33,7 @@ export function webOrigin() {
   return host ? `http://${host}:3000` : '';
 }
 
-export function useRoom(account: Account | null = null, authReady = true) {
+export function useRoom(account: Account | null, authReady: boolean) {
   const controller = useRef<{ send: (command: Outbound) => void; leave: () => void }>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
   const [connected, setConnected] = useState(false);
@@ -48,9 +48,9 @@ export function useRoom(account: Account | null = null, authReady = true) {
     setPending(false);
     setConnected(false);
     const origin = webOrigin();
-    if (!origin || !authReady) return;
+    if (!origin || !authReady || !uid) return;
 
-    const storageKey = uid ? `blame-game-session:${uid}` : 'blame-game-session';
+    const storageKey = `blame-game-session:${uid}`;
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let handshakeTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -89,10 +89,6 @@ export function useRoom(account: Account | null = null, authReady = true) {
 
       peer.onopen = async () => {
         if (stopped || socket !== peer) return;
-        if (!uid) {
-          sendEntry();
-          return;
-        }
         try {
           const idToken = await getIdToken();
           if (stopped || socket !== peer || peer.readyState !== WebSocket.OPEN) return;

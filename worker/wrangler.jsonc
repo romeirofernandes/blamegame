@@ -4,6 +4,7 @@
   "main": "src/index.js",
   "compatibility_date": "2025-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": { "FIREBASE_PROJECT_ID": "blame-game-edf11" },
   "observability": { "enabled": true },
   "assets": {
     "directory": "../dist",

@@ -4,7 +4,6 @@ import {
   EmailAuthProvider,
   linkWithCredential,
   onIdTokenChanged,
-  signInAnonymously,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   type User,
@@ -20,7 +19,6 @@ type AuthContextValue = {
   setupError: string | null;
   signIn: (email: string, password: string) => Promise<User>;
   signUp: (email: string, password: string) => Promise<User>;
-  signInAsGuest: () => Promise<User>;
   signOut: () => Promise<void>;
 };
 
@@ -80,7 +78,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       return (await createUserWithEmailAndPassword(requireAuth(), email.trim(), password)).user;
     },
-    signInAsGuest: async () => (await signInAnonymously(requireAuth())).user,
     signOut: async () => firebaseSignOut(requireAuth()),
   }), [user, loading, authRevision]);
 

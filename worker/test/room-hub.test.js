@@ -36,7 +36,8 @@ class FakeSocket {
 
 const token = (letter) => letter.repeat(32);
 const command = (type, extra = {}) => JSON.stringify({ type, ...extra });
-const route = (socket, code, creating = false) => socket.serializeAttachment({ code, creating });
+const route = (socket, code, creating = false, authUid = crypto.randomUUID()) =>
+  socket.serializeAttachment({ code, creating, authUid });
 
 describe('RoomHub WebSocket protocol', () => {
   test('persists private room state and resumes the same player after hibernation', async () => {
@@ -74,7 +75,7 @@ describe('RoomHub WebSocket protocol', () => {
     recoveredState.sockets.add(resumed);
     const recoveredHub = new GameRoom(recoveredState, {});
     await recoveredHub.ready;
-    route(resumed, code);
+    route(resumed, code, false, guest.attachment.authUid);
     await recoveredHub.webSocketMessage(resumed, command('resume', { code, token: token('b') }));
 
     expect(resumed.lastState()).toMatchObject({ code, me: guest.lastState().me, phase: 'vote', hasSubmitted: true });
@@ -134,6 +135,21 @@ describe('RoomHub WebSocket protocol', () => {
     expect(hub.session.room.players).toHaveLength(1);
   });
 
+  test('requires a signed-in player before creating a room', async () => {
+    const state = new FakeState();
+    const socket = new FakeSocket();
+    const hub = new GameRoom(state, {});
+    socket.serializeAttachment({ code: 'LMNPQ', creating: true });
+
+    await hub.webSocketMessage(socket, command('create', {
+      name: 'Guest', deckId: 'group-chat', mode: 'anonymous', token: token('d'),
+    }));
+
+    expect(socket.messages.at(-1)).toMatchObject({ type: 'error', message: 'Sign in to play.', reset: true });
+    expect(socket.closed).toBe(true);
+    expect(hub.session).toBeNull();
+  });
+
   test('expires idle rooms and rejects unverifiable Firebase identities', async () => {
     const state = new FakeState();
     const socket = new FakeSocket();
@@ -150,7 +166,6 @@ describe('RoomHub WebSocket protocol', () => {
     await hub.webSocketMessage(guest, command('create', {
       name: 'Guest', deckId: 'group-chat', mode: 'anonymous', token: token('d'),
     }));
-    const code = guest.lastState().code;
     const session = hub.session;
     session.touched -= 2 * 60 * 60_000;
     await hub.alarm();

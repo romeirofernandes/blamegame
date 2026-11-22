@@ -11,9 +11,9 @@ bun run build:web
 bun run server
 ```
 
-open [localhost:3000](http://localhost:3000) and tap **Try a solo demo**. for written answers, open **Decks**, find **Spotlight**, and tap **Try solo**.
+set up Firebase below, then open [localhost:3000](http://localhost:3000) and tap **Try a solo demo**. for written answers, open **Decks**, find **Spotlight**, and tap **Try solo**.
 
-to play with a group, host a room and send the code or invite link to at least two other players. on the same Wi-Fi, friends can open `http://<your-computer-ip>:3000` to join. on one computer, use three fresh tabs.
+to play with a group, host a room and send the code or invite link to at least two other players. on the same Wi-Fi, friends can open `http://<your-computer-ip>:3000` to join. on one computer, use three separate browser profiles and sign into a different account in each.
 
 ## try it on an iPhone or Android
 
@@ -27,20 +27,21 @@ install [Expo Go for SDK 58](https://expo.dev/go) on your phone and join the sam
 
 ## turn on accounts
 
-create a Firebase project for Blame Game, add a Firebase web app, and enable **Email/Password** and **Anonymous** under Authentication → Sign-in method. copy `.env.example` to `.env.local` and fill in the public configuration for your Firebase web app. copy `worker/dev.vars.example` to `worker/.dev.vars` and set the same Firebase project ID there. then rebuild the web app and restart the Worker.
+enable **Email/Password** under **Firebase Console → Authentication → Sign-in method**. put the Android config at `google-services.json` in the repo root. Expo reads it for the Android package `com.blame.game`. to supply Firebase web app settings instead, copy `.env.example` to `.env.local` and fill them in.
 
-sign in from **Settings → Account**. nickname play still works without Firebase. a live room resumes on the same device or tab with the original session.
+the Worker uses the Firebase project ID in `worker/wrangler.jsonc`. if you use a different project locally, set `FIREBASE_PROJECT_ID` in `worker/.dev.vars` to match. rebuild the web app and restart the Worker after changing the configuration.
+
+you can sign in from **Settings → Account** or when you start playing. hosting, joining, and trying a solo demo all require an account. a live room resumes on the same device or tab when you sign in with the same account.
 
 ## deploy the Worker and build the app
 
-the Worker serves both the web app and the WebSocket endpoint. each room has its own SQLite-backed Durable Object, with hibernation and a two-hour idle expiry. set `FIREBASE_PROJECT_ID` for the deployed Worker if you're turning on accounts.
+the Worker serves both the web app and the WebSocket endpoint. each room has its own SQLite-backed Durable Object, with hibernation and a two-hour idle expiry. match `FIREBASE_PROJECT_ID` in `worker/wrangler.jsonc` to the app’s Firebase project.
 
 ```sh
-bun run --cwd worker wrangler secret put FIREBASE_PROJECT_ID
 bun run deploy:worker
 ```
 
-set `EXPO_PUBLIC_SERVER_URL` to the Worker’s public HTTPS origin when building a standalone app. the [EAS preview profile](./eas.json) makes an Android APK or an iOS internal distribution build with a registered test device and Apple signing credentials.
+set `EXPO_PUBLIC_SERVER_URL` to the Worker’s public HTTPS origin when building a standalone app. for an EAS cloud build, provide `google-services.json` as a file environment variable named `GOOGLE_SERVICES_JSON` in the build environment. the [EAS preview profile](./eas.json) makes an Android APK or an iOS internal distribution build with a registered test device and Apple signing credentials.
 
 ```sh
 EXPO_PUBLIC_SERVER_URL=https://your-worker.example bun x eas-cli build --profile preview --platform all

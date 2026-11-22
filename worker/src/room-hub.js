@@ -105,6 +105,12 @@ export class GameRoom {
       return;
     }
 
+    if (!socketData(socket).authUid) {
+      this.sendError(socket, 'Sign in to play.', true);
+      try { socket.close(1008, 'Sign-in required'); } catch {}
+      return;
+    }
+
     if (command.type === 'leave') {
       await this.leave(socket);
       return;
@@ -129,7 +135,7 @@ export class GameRoom {
   async enter(socket, command) {
     const current = socketData(socket);
     const code = current.code;
-    const authUid = current.authUid ?? null;
+    const authUid = current.authUid;
     if (!validCode(code)) throw new Error('This room could not be found.');
     if (!validToken(command.token)) throw new Error('Invalid player session.');
 
@@ -168,7 +174,7 @@ export class GameRoom {
       this.sendError(socket, 'Your session has expired.', true);
       return;
     }
-    if (saved && (saved.authUid ?? null) !== authUid) {
+    if (saved && saved.authUid !== authUid) {
       throw new Error('Sign in with the account used to join this room.');
     }
 
@@ -238,8 +244,8 @@ export class GameRoom {
   broadcast() {
     if (!this.session) return;
     for (const socket of this.state.getWebSockets()) {
-      const { code, playerId } = socketData(socket);
-      if (code !== this.session.room.code || !playerId) continue;
+      const { code, playerId, authUid } = socketData(socket);
+      if (code !== this.session.room.code || !playerId || !authUid) continue;
       this.send(socket, { type: 'state', room: viewRoom(this.session.room, playerId) });
     }
   }

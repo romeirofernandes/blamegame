@@ -13,7 +13,7 @@
       "infoPlist": { "CADisableMinimumFrameDurationOnPhone": true }
     },
     "android": {
-      "package": "com.blamegame.app",
+      "package": "com.blame.game",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#15131d"

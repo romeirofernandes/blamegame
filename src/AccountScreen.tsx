@@ -4,7 +4,7 @@ import { Body, Label, Tap, Title } from './ui';
 import { useAppearance } from './appearance';
 import { useAuth } from './auth';
 
-type AccountScreenProps = { onAuthenticated?: () => void };
+type AccountScreenProps = { forPlay?: boolean };
 type FormMode = 'signin' | 'signup';
 
 function AccountAction({ children, onPress, disabled, primary = false }: {
@@ -32,7 +32,7 @@ function AccountAction({ children, onPress, disabled, primary = false }: {
   );
 }
 
-function errorMessage(error: unknown, action: 'signin' | 'signup' | 'guest' | 'signout', linkingGuest: boolean) {
+function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout', linkingGuest: boolean) {
   const code = (error as { code?: string } | null)?.code;
   if (code === 'auth/invalid-email') return 'Enter a valid email address.';
   if (code === 'auth/weak-password') return 'Choose a password with at least 6 characters.';
@@ -46,21 +46,18 @@ function errorMessage(error: unknown, action: 'signin' | 'signup' | 'guest' | 's
   if (code === 'auth/guest-link-uid-changed') {
     return 'This guest account could not be linked. Your guest session is still active; try again.';
   }
-  if (code === 'auth/operation-not-allowed') {
-    return action === 'guest'
-      ? 'Guest play is not enabled for this app. Ask the app owner to turn it on.'
-      : 'Email sign-in is not enabled for this app. Ask the app owner to turn it on.';
+  if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    return 'Ask the app owner to enable Email/Password sign-in in Firebase.';
   }
   if (code === 'auth/network-request-failed') return 'Unable to reach Firebase. Check your connection and try again.';
   if (action === 'signout') return 'Unable to sign out. Check your connection and try again.';
-  if (action === 'guest') return 'Unable to start a guest session. Check your connection and try again.';
   if (action === 'signup') return 'Unable to create the account. Check your details and try again.';
   return 'Unable to sign in. Check your details and try again.';
 }
 
-export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
+export function AccountScreen({ forPlay }: AccountScreenProps) {
   const { colors } = useAppearance();
-  const { user, loading, configured, signIn, signUp, signInAsGuest, signOut } = useAuth();
+  const { user, loading, configured, signIn, signUp, signOut } = useAuth();
   const [mode, setMode] = useState<FormMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,10 +68,10 @@ export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
   const passwordInput = useRef<TextInputInstance | null>(null);
   const isGuest = Boolean(user?.isAnonymous);
 
-  async function run(action: 'signin' | 'signup' | 'guest' | 'signout') {
+  async function run(action: 'signin' | 'signup' | 'signout') {
     setError('');
     setLinkedGuestUid(null);
-    if (action !== 'signout' && action !== 'guest' && !email.trim()) {
+    if (action !== 'signout' && !email.trim()) {
       setError('Enter your email address.');
       emailInput.current?.focus();
       return;
@@ -96,9 +93,7 @@ export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
         }
         if (guestUid) setLinkedGuestUid(guestUid);
       }
-      if (action === 'guest') await signInAsGuest();
       if (action === 'signout') await signOut();
-      if (action !== 'signout') onAuthenticated?.();
       setPassword('');
     } catch (cause) {
       setError(errorMessage(cause, action, isGuest));
@@ -111,9 +106,9 @@ export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
     return (
       <View className="gap-4 rounded-[24px] border border-line bg-panel p-5">
         <Label className="text-peach">Account setup</Label>
-        <Title className="text-[44px] leading-[1]">Play can still go on</Title>
+        <Title className="text-[44px] leading-[1]">Account setup needed</Title>
         <Body className="text-muted">
-          Account sign-in is not available right now. You can still host or join a room with a nickname.
+          Ask the app owner to finish Firebase setup so you can sign in and play.
         </Body>
       </View>
     );
@@ -153,13 +148,13 @@ export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
     <View className="gap-6">
       <View className="gap-2">
         <Label className="text-lilac-strong">{isGuest ? 'Guest account' : 'Account'}</Label>
-        <Title>{isGuest ? 'Link email sign-in' : mode === 'signup' ? 'Create an account' : 'Welcome back'}</Title>
+        <Title>{isGuest ? 'Link email sign-in' : mode === 'signup' ? 'Create an account' : forPlay ? 'Sign in to play' : 'Welcome back'}</Title>
         <Body className="text-muted">
           {isGuest
             ? 'Link an email and password to this guest account. Firebase keeps the same player identity.'
             : mode === 'signup'
               ? 'Create an account to sign in with email and password.'
-              : 'Sign in to your account.'}
+              : forPlay ? 'Sign in or create an account to continue.' : 'Sign in to your account.'}
         </Body>
       </View>
 
@@ -234,11 +229,6 @@ export function AccountScreen({ onAuthenticated }: AccountScreenProps) {
         <AccountAction primary onPress={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')} disabled={busy}>
           {busy ? 'Connecting…' : isGuest ? 'Save account' : mode === 'signup' ? 'Create account' : 'Sign in'}
         </AccountAction>
-        {!isGuest && (
-          <AccountAction onPress={() => void run('guest')} disabled={busy}>
-            {busy ? 'Starting guest session…' : 'Play as a guest'}
-          </AccountAction>
-        )}
         {isGuest && (
           <AccountAction onPress={() => void run('signout')} disabled={busy}>
             {busy ? 'Updating account…' : 'Sign out'}

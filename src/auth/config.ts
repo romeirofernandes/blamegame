@@ -1,10 +1,13 @@
 import type { FirebaseOptions } from 'firebase/app';
+import Constants from 'expo-constants';
+
+const projectConfig: FirebaseOptions | undefined = Constants.expoConfig?.extra?.firebase;
 
 const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || projectConfig?.apiKey,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || projectConfig?.authDomain,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || projectConfig?.projectId,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || projectConfig?.appId,
 };
 
 export const missingFirebaseConfig = [
