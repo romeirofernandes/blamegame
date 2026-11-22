@@ -6,10 +6,11 @@
   "scripts": {
     "start": "expo start",
     "dev": "expo start",
-    "server": "bun server.ts",
+    "server": "bun run --cwd worker dev --ip 0.0.0.0 --port 3000",
     "build:web": "expo export --platform web",
     "check": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "deploy:worker": "bun run build:web && bun run --cwd worker deploy"
   },
   "dependencies": {
     "@expo-google-fonts/barlow-condensed": "0.4.1",
@@ -27,6 +28,7 @@
     "expo-linking": "~58.0.17",
     "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
+    "firebase": "13.4.0",
     "nativewind": "5.0.0-rc.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",

@@ -2,4 +2,8 @@ node_modules/
 .expo/
 dist/
 .env.local
+.env.*.local
+.dev.vars*
+!.dev.vars.example
+.wrangler/
 *.tsbuildinfo

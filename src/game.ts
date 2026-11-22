@@ -47,7 +47,7 @@ export type Command = Action
   | { type: 'leave' };
 export type Message =
   | { type: 'state'; room: RoomView }
-  | { type: 'error'; message: string; reset?: boolean };
+  | { type: 'error'; message: string; reset?: boolean; retryCreate?: boolean };
 
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 12;
