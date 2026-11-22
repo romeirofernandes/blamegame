@@ -32,32 +32,48 @@ function AccountAction({ children, onPress, disabled, primary = false }: {
   );
 }
 
-function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout', linkingGuest: boolean) {
+function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout' | 'google', linkingGuest: boolean) {
   const code = (error as { code?: string } | null)?.code;
   if (code === 'auth/invalid-email') return 'Enter a valid email address.';
   if (code === 'auth/weak-password') return 'Choose a password with at least 6 characters.';
   if (code === 'auth/email-already-in-use') return 'An account already uses this email. Sign in instead.';
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-    return 'Email or password did not match. Check your details and try again.';
+    return action === 'google'
+      ? 'Firebase couldn’t verify your Google sign-in. Try again or use email and password.'
+      : 'Email or password did not match. Check your details and try again.';
   }
   if (code === 'auth/credential-already-in-use' && linkingGuest) {
-    return 'That email already has an account. Sign in to that account; this guest session stays separate.';
+    return action === 'google'
+      ? 'That Google account already has a Blame Game account. Sign in to it; this guest session stays separate.'
+      : 'That email already has an account. Sign in to that account; this guest session stays separate.';
+  }
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'A Blame Game account already uses this Google email with another sign-in method. Use that method to sign in.';
   }
   if (code === 'auth/guest-link-uid-changed') {
     return 'This guest account could not be linked. Your guest session is still active; try again.';
   }
-  if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
-    return 'Ask the app owner to enable Email/Password sign-in in Firebase.';
+  if (code === 'auth/google-not-configured' || code === 'auth/google-id-token-missing') {
+    return 'Google sign-in is not configured for this build. Ask the app owner to finish Google setup.';
   }
+  if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    return `Ask the app owner to enable ${action === 'google' ? 'Google' : 'Email/Password'} sign-in in Firebase.`;
+  }
+  if (code === 'PLAY_SERVICES_NOT_AVAILABLE') return 'Google Play Services is unavailable or needs an update.';
+  if (code === 'auth/unauthorized-domain') {
+    return 'This web address is not authorized for sign-in. Ask the app owner to add it in Firebase Authentication settings.';
+  }
+  if (code === 'auth/popup-blocked') return 'Allow pop-ups for this site, then try Google sign-in again.';
   if (code === 'auth/network-request-failed') return 'Unable to reach Firebase. Check your connection and try again.';
   if (action === 'signout') return 'Unable to sign out. Check your connection and try again.';
   if (action === 'signup') return 'Unable to create the account. Check your details and try again.';
+  if (action === 'google') return 'Unable to sign in with Google. Try again or use email and password.';
   return 'Unable to sign in. Check your details and try again.';
 }
 
 export function AccountScreen({ forPlay }: AccountScreenProps) {
   const { colors } = useAppearance();
-  const { user, loading, configured, signIn, signUp, signOut } = useAuth();
+  const { user, loading, configured, googleSignInAvailable, signIn, signUp, signInWithGoogle, signOut } = useAuth();
   const [mode, setMode] = useState<FormMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,6 +113,30 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
       setPassword('');
     } catch (cause) {
       setError(errorMessage(cause, action, isGuest));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runGoogleSignIn() {
+    setError('');
+    setLinkedGuestUid(null);
+    setBusy(true);
+    try {
+      const guestUid = isGuest ? user?.uid : null;
+      const signedInUser = await signInWithGoogle();
+      if (!signedInUser) return;
+      if (guestUid && (signedInUser.uid !== guestUid || signedInUser.isAnonymous)) {
+        throw Object.assign(new Error('Guest identity changed during Google account linking.'), {
+          code: 'auth/guest-link-uid-changed',
+        });
+      }
+      if (guestUid) setLinkedGuestUid(guestUid);
+    } catch (cause) {
+      const code = (cause as { code?: string } | null)?.code;
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        setError(errorMessage(cause, 'google', isGuest));
+      }
     } finally {
       setBusy(false);
     }
@@ -148,10 +188,10 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
     <View className="gap-6">
       <View className="gap-2">
         <Label className="text-lilac-strong">{isGuest ? 'Guest account' : 'Account'}</Label>
-        <Title>{isGuest ? 'Link email sign-in' : mode === 'signup' ? 'Create an account' : forPlay ? 'Sign in to play' : 'Welcome back'}</Title>
+        <Title>{isGuest ? 'Save your account' : mode === 'signup' ? 'Create an account' : forPlay ? 'Sign in to play' : 'Welcome back'}</Title>
         <Body className="text-muted">
           {isGuest
-            ? 'Link an email and password to this guest account. Firebase keeps the same player identity.'
+            ? 'Link email and password or Google sign-in to this guest account. Firebase keeps the same player identity.'
             : mode === 'signup'
               ? 'Create an account to sign in with email and password.'
               : forPlay ? 'Sign in or create an account to continue.' : 'Sign in to your account.'}
@@ -179,6 +219,12 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
             );
           })}
         </View>
+      )}
+
+      {googleSignInAvailable && (
+        <AccountAction onPress={() => void runGoogleSignIn()} disabled={busy}>
+          {isGuest ? 'Link Google account' : 'Continue with Google'}
+        </AccountAction>
       )}
 
       <View className="gap-4">

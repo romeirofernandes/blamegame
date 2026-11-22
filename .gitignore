@@ -8,3 +8,4 @@ dist/
 .wrangler/
 *.tsbuildinfo
 /google-services.json
+/GoogleService-Info.plist

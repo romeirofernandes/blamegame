@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth, initializationError } from './auth/firebase';
 import { firebaseConfigReady, missingFirebaseConfig } from './auth/config';
+import { googleSignInAvailable, signInWithGoogle as authenticateWithGoogle } from './auth/google';
 
 
 type AuthContextValue = {
@@ -17,8 +18,10 @@ type AuthContextValue = {
   loading: boolean;
   configured: boolean;
   setupError: string | null;
+  googleSignInAvailable: boolean;
   signIn: (email: string, password: string) => Promise<User>;
   signUp: (email: string, password: string) => Promise<User>;
+  signInWithGoogle: () => Promise<User | null>;
   signOut: () => Promise<void>;
 };
 
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     loading,
     configured: Boolean(auth) && !initializationError,
     setupError,
+    googleSignInAvailable: Boolean(auth) && googleSignInAvailable,
     signIn: async (email, password) => {
       const result = await signInWithEmailAndPassword(requireAuth(), email.trim(), password);
       return result.user;
@@ -77,6 +81,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return linkedUser;
       }
       return (await createUserWithEmailAndPassword(requireAuth(), email.trim(), password)).user;
+    },
+    signInWithGoogle: async () => {
+      const currentAuth = requireAuth();
+      const currentUser = currentAuth.currentUser;
+      const signedInUser = await authenticateWithGoogle(
+        currentAuth,
+        currentUser?.isAnonymous ? currentUser : null,
+      );
+      if (signedInUser) {
+        setUser(signedInUser);
+        setAuthRevision((revision) => revision + 1);
+      }
+      return signedInUser;
     },
     signOut: async () => firebaseSignOut(requireAuth()),
   }), [user, loading, authRevision]);
