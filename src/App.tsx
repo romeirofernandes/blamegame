@@ -20,6 +20,7 @@ import Message01Icon from '@hugeicons/core-free-icons/Message01Icon';
 import PlayIcon from '@hugeicons/core-free-icons/PlayIcon';
 import UserGroupIcon from '@hugeicons/core-free-icons/UserGroupIcon';
 import VoteIcon from '@hugeicons/core-free-icons/VoteIcon';
+import PencilEdit01Icon from '@hugeicons/core-free-icons/PencilEdit01Icon';
 import { decks, getDeck } from './decks';
 import { DEMO_PLAYER, demoAction, newDemo } from './demo';
 import { MIN_PLAYERS, viewRoom, type Action, type Mode, type Room, type RoomView } from './game';
@@ -124,7 +125,7 @@ function GameApp() {
                   <Title className="text-[76px] leading-[71px]">WHO, ME?</Title>
                   <Body className="mt-2 max-w-[285px] text-muted">The party game where everyone in the group chat is a suspect.</Body>
                 </View>
-                <PromptCard hero label="From the Group Chat deck" question="Who would go viral for the wrong reason?" />
+                <PromptCard hero label="From the Group Chat deck" question={decks[0].cards[0].question} />
                 <View className="mb-6 mt-7 flex-row items-center justify-center gap-3">
                   <Label className="tracking-[1px]">Pick a friend</Label>
                   <View className="size-1 rounded-full bg-lilac" />
@@ -166,7 +167,7 @@ function GameApp() {
                       <Label>Question deck</Label>
                       {decks.map((item, index) => {
                         const active = item.id === deck;
-                        const icon = [Message01Icon, FlashIcon, VoteIcon][index];
+                        const icon = [Message01Icon, FlashIcon, VoteIcon, PencilEdit01Icon][index];
                         return (
                           <Tap key={item.id} selected={active} onPress={() => { hapticSelect(); setDeck(item.id); }}>
                             <View className={`flex-row items-center gap-3 rounded-[18px] border p-3 ${active ? 'border-lilac bg-[#302548]' : 'border-line bg-panel'}`}>

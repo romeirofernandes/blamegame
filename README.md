@@ -10,7 +10,7 @@ bun run build:web
 bun run server
 ```
 
-open [localhost:3000](http://localhost:3000) and tap **Try a solo demo**. you can play all five rounds yourself, including the written spotlight round.
+open [localhost:3000](http://localhost:3000) and tap **Try a solo demo**. you can play all five rounds yourself. the Spotlight deck is for written answers about your friends.
 
 to play with a group, host a room and share the code or invite link with at least two other players. with everyone on the same Wi-Fi, open `http://<your-computer-ip>:3000` on the other devices. on one computer, use three fresh tabs and paste the invite URL into each guest tab. the browser keeps your spot if you reload a tab.
 

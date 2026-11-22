@@ -71,7 +71,7 @@ export function addPlayer(room: Room, id: string, value: string) {
 
 function beginRound(room: Room) {
   const card = getDeck(room.deckId)!.cards[room.rounds.length];
-  const spotlight = room.players[1 + (room.rounds.length % (room.players.length - 1))];
+  const spotlight = room.players[room.rounds.length % room.players.length];
   room.rounds.push({
     card: { ...card, question: card.question.replace('{player}', () => spotlight.name) },
     submissions: new Map(),

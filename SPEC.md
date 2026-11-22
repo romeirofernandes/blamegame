@@ -5,13 +5,13 @@ Blame Game turns a group-chat poll into a live party game. The payoff is finding
 ## First playtest
 
 - A host picks a five-round deck and a vote mode, creates a private room, and shares a code or invite link. Players join with a nickname. A room holds 3–12 players and locks when the host starts.
-- Most rounds ask everyone to pick one player. A spotlight round asks for a short answer about one player. Everyone may submit once or pass. The host can reveal after at least one submission or pass, and advances the next round. If the host leaves, another connected player takes over.
+- Voting decks ask everyone to pick one player. The Spotlight deck asks for short answers about a different player each round. Everyone may submit once or pass. The host can reveal after at least one submission or pass, and advances the next round. If the host leaves, another connected player takes over.
 - Before the reveal, everyone sees the submission count and their own submission status. Anonymous mode shows totals and unattributed answers after the reveal, including for the host. Named mode also shows who picked each player or wrote each answer.
 - Players can try a solo demo with simulated friends. The final round ends with a session recap and a way home.
 
 ## Decks
 
-Start with **Group Chat** for recognizable habits, **Chaos Mode** for harmless hypotheticals, and **Soft Launch** for affectionate takes. Playtest for questions that split the room, get a laugh, or start a story. Replace questions that produce the same winner every time. Custom cards and asynchronous play are candidates after the live loop gets repeat use.
+Start with **Group Chat** for playful, recognizable habits. **Chaos Mode** covers harmless hypotheticals, **Soft Launch** covers affectionate takes, and **Spotlight** collects short answers about one player at a time. Playtest for questions that split the room, get a laugh, or start a story. Replace questions that produce the same winner every time. Custom cards and asynchronous play are candidates after the live loop gets repeat use.
 
 ## Screen and motion
 
