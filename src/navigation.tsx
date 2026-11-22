@@ -1,12 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import Cards01Icon from "@hugeicons/core-free-icons/Cards01Icon";
@@ -14,7 +7,8 @@ import PlayIcon from "@hugeicons/core-free-icons/PlayIcon";
 import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon";
 import { decks } from "./decks";
 import { useAppearance } from "./appearance";
-import { Body, Label, Title, hapticSelect } from "./ui";
+import { Body, Label, Surface, Tap, Title, hapticSelect } from "./ui";
+import { Tabs, TabsList, TabsTrigger } from "./beui/tabs";
 
 export type GameDestination = "play" | "decks" | "settings";
 
@@ -27,6 +21,7 @@ const destinations = [
   label: string;
   icon: typeof PlayIcon;
 }[];
+const destinationIds = destinations.map(({ id }) => id);
 
 export function GameTabBar({
   active,
@@ -35,80 +30,39 @@ export function GameTabBar({
   active: GameDestination;
   onChange: (destination: GameDestination) => void;
 }) {
-  const { colors } = useAppearance();
-  const [barWidth, setBarWidth] = useState(0);
-  const selectedIndex = destinations.findIndex(({ id }) => id === active);
-  const reducedMotion = useReducedMotion();
-  const position = useSharedValue(selectedIndex);
-  const tabWidth = Math.max(0, (barWidth - 32) / destinations.length);
-  const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: position.value * tabWidth + (tabWidth - 16) / 2 }],
-  }), [tabWidth]);
-
-  useEffect(() => {
-    position.value = reducedMotion
-      ? selectedIndex
-      : withTiming(selectedIndex, { duration: 220, easing: Easing.out(Easing.cubic) });
-  }, [position, reducedMotion, selectedIndex]);
-
   return (
     <SafeAreaView edges={["bottom"]} className="border-t border-line/40 bg-panel">
-      <View
-        accessibilityRole="tablist"
-        className="mx-auto w-full max-w-[480px] flex-row px-4 py-1"
-        onLayout={({ nativeEvent }) => setBarWidth(nativeEvent.layout.width)}
+      <Tabs
+        value={active}
+        values={destinationIds}
+        onValueChange={(value) => {
+          if (value === active || !destinationIds.includes(value as GameDestination)) return;
+          hapticSelect();
+          onChange(value as GameDestination);
+        }}
+        className="mx-auto w-full max-w-[480px] px-4 py-1"
       >
-        <Animated.View
-          aria-hidden
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-          className="absolute h-0.5 w-4 rounded-full"
-          style={[
-            {
-              left: 16,
-              top: 8,
-              backgroundColor: colors.lilacStrong,
-            },
-            highlightStyle,
-          ]}
-        />
-        {destinations.map(({ id, label, icon }) => {
-          const selected = active === id;
-          return (
-            <Pressable
+        <TabsList accessibilityLabel="Game navigation">
+          {destinations.map(({ id, label, icon }) => (
+            <TabsTrigger
               key={id}
-              accessibilityRole="tab"
-              accessibilityLabel={label}
-              aria-selected={selected}
-              accessibilityState={{ selected }}
-              className="min-h-14 flex-1 items-center justify-center gap-1 rounded-xl active:opacity-75 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
-              onPress={() => {
-                if (selected) return;
-                hapticSelect();
-                onChange(id);
-              }}
+              value={id}
+              icon={({ size, color }) => (
+                <HugeiconsIcon
+                  accessible={false}
+                  icon={icon}
+                  color={color}
+                  size={size}
+                  strokeWidth={1.9}
+                />
+              )}
+              className="active:opacity-75"
             >
-              <View
-                aria-hidden
-                className="h-0.5 w-4 rounded-full bg-transparent"
-              />
-              <HugeiconsIcon
-                accessible={false}
-                icon={icon}
-                color={selected ? colors.lilacStrong : colors.muted}
-                size={21}
-                strokeWidth={selected ? 2.2 : 1.8}
-              />
-              <Text
-                className={`font-boldface text-xs leading-4 ${selected ? "text-lilac-strong" : "text-muted"}`}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
     </SafeAreaView>
   );
 }
@@ -134,7 +88,7 @@ export function DecksScreen({
         {decks.map((deck) => {
           const sample = deck.cards[0];
           return (
-            <View
+            <Surface
               key={deck.id}
               className="overflow-hidden rounded-[24px] border border-line bg-panel"
             >
@@ -182,25 +136,23 @@ export function DecksScreen({
                 )}
 
                 <View className="flex-row flex-wrap items-center justify-between gap-3">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Try ${deck.name} solo`}
+                  <Tap
+                    label={`Try ${deck.name} solo`}
                     className="min-h-12 justify-center rounded-full px-3 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
                     onPress={() => onTry(deck.id)}
                   >
                     <Text className="font-boldface text-sm text-lilac-strong">Try solo</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Host with ${deck.name}`}
+                  </Tap>
+                  <Tap
+                    label={`Host with ${deck.name}`}
                     className="min-h-12 justify-center rounded-full border border-line px-4 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
                     onPress={() => onHost(deck.id)}
                   >
                     <Text className="font-boldface text-sm text-cloud">Host with deck</Text>
-                  </Pressable>
+                  </Tap>
                 </View>
               </View>
-            </View>
+            </Surface>
           );
         })}
       </View>
@@ -228,7 +180,7 @@ export function SettingsScreen({
         <Body className="mt-2 max-w-[310px] text-muted">{description}</Body>
       </View>
 
-      <SettingsSection title="Appearance">{appearanceSlot}</SettingsSection>
+      <SettingsSection title="Appearance" surface>{appearanceSlot}</SettingsSection>
       {avatarSlot && (
         <SettingsSection title="Avatar">{avatarSlot}</SettingsSection>
       )}
@@ -240,9 +192,11 @@ export function SettingsScreen({
 function SettingsSection({
   title,
   children,
+  surface = false,
 }: {
   title: string;
   children: ReactNode;
+  surface?: boolean;
 }) {
   return (
     <View className="gap-3">
@@ -252,7 +206,13 @@ function SettingsSection({
       >
         {title}
       </Text>
-      <View className="gap-3">{children}</View>
+      {surface ? (
+        <Surface className="gap-3 rounded-[20px] border border-line bg-panel p-4">
+          {children}
+        </Surface>
+      ) : (
+        <View className="gap-3">{children}</View>
+      )}
     </View>
   );
 }

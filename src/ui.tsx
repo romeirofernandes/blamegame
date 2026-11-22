@@ -1,14 +1,19 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Image, Platform, Pressable, Text, View, type TextProps } from 'react-native';
-import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
+import { Image, Platform, Text, View, type TextProps } from 'react-native';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import ArrowRight01Icon from '@hugeicons/core-free-icons/ArrowRight01Icon';
 import SparklesIcon from '@hugeicons/core-free-icons/SparklesIcon';
 import * as Haptics from 'expo-haptics';
 import { twMerge } from 'tailwind-merge';
 import { useAppearance } from './appearance';
+import { ButtonRoot, type ButtonRootProps } from './beui/button';
+import { Surface } from './beui/card';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { DITHER_AVATAR_SIZE, DITHER_OFFSET_Y, DITHER_SCALE, ditherAvatar } from './dither-avatar';
+
+export { Field } from './beui/input';
+export { GameSwitch } from './beui/switch';
+export { Surface };
 
 export function Body({ className = '', ...props }: TextProps) {
   return <Text className={twMerge('font-body text-base leading-body text-cloud', className)} {...props} />;
@@ -22,57 +27,38 @@ export function Label({ className = '', ...props }: TextProps) {
   return <Text className={twMerge('font-boldface text-[11px] uppercase tracking-label text-muted', className)} {...props} />;
 }
 
-export function Tap({ children, onPress, label, disabled, selected, className = '' }: {
+export type TapProps = Omit<ButtonRootProps, 'children' | 'onPress'> & {
   children: ReactNode;
-  onPress: () => void;
-  label?: string;
-  disabled?: boolean;
-  selected?: boolean;
-  className?: string;
-}) {
-  const [pressed, setPressed] = useState(false);
-  const reduced = useReducedMotion();
+  onPress: NonNullable<ButtonRootProps['onPress']>;
+};
+
+export function Tap({ children, className = '', ...props }: TapProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled, selected }}
+    <ButtonRoot
+      {...props}
       className={`min-h-12 justify-center rounded-[18px] web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${className}`}
-      disabled={disabled}
-      onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      pressRetentionOffset={16}
     >
-      <Animated.View
-        className="w-full"
-        style={reduced ? { opacity: pressed ? 0.88 : 1 } : {
-          transform: [{ scale: pressed ? 0.96 : 1 }],
-          transitionProperty: 'transform',
-          transitionDuration: 150,
-          transitionTimingFunction: cubicBezier(0, 0, 0.58, 1),
-        }}
-      >
-        {children}
-      </Animated.View>
-    </Pressable>
+      {children}
+    </ButtonRoot>
   );
 }
 
-export function Button({ children, onPress, tone = 'primary', disabled, arrow = true }: {
-  children: string;
-  onPress: () => void;
+export type ButtonProps = Omit<TapProps, 'children' | 'className'> & {
+  children: ReactNode;
   tone?: 'primary' | 'secondary' | 'quiet';
-  disabled?: boolean;
   arrow?: boolean;
-}) {
+  className?: string;
+};
+
+export function Button({ children, onPress, tone = 'primary', disabled, arrow = true, className = '', label, ...props }: ButtonProps) {
   const { colors: palette } = useAppearance();
   const background = tone === 'primary' ? 'bg-lime' : tone === 'secondary' ? 'border border-line bg-panel' : '';
   const color = tone === 'primary' ? palette.ink : tone === 'secondary' ? palette.cloud : palette.muted;
+  const textChild = typeof children === 'string' || typeof children === 'number';
   return (
-    <Tap onPress={onPress} disabled={disabled}>
+    <Tap {...props} label={label ?? (textChild ? String(children) : undefined)} onPress={onPress} disabled={disabled} className={className}>
       <View className={`min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-3 ${background} ${disabled ? 'opacity-45' : ''}`}>
-        <Text className="text-center font-boldface text-base" style={{ color }}>{children}</Text>
+        {textChild ? <Text className="text-center font-boldface text-base" style={{ color }}>{children}</Text> : children}
         {arrow && <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={color} strokeWidth={2} />}
       </View>
     </Tap>
@@ -133,7 +119,7 @@ export function PromptCard({ question, label, color, hero = false }: {
           <View pointerEvents="none" className="absolute inset-x-2 bottom-1 top-2 rotate-3 rounded-[25px]" style={{ backgroundColor: palette.promptStackAccent }} />
         </>
       )}
-      <View className={`overflow-hidden rounded-[25px] p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color ?? palette.lilac }}>
+      <Surface className={`overflow-hidden rounded-[25px] border-0 p-5 ${hero ? 'min-h-[188px]' : ''}`} style={{ backgroundColor: color ?? palette.lilac }}>
         <View className="flex-row items-center justify-between gap-2">
           <View className="rounded-full border border-ink/60 px-2.5 py-1.5">
             <Label className="tracking-label text-ink">{label}</Label>
@@ -143,7 +129,7 @@ export function PromptCard({ question, label, color, hero = false }: {
         <Title className={`mt-3 text-ink ${hero ? 'text-[31px]' : 'text-[34px]'}`}>
           {question}
         </Title>
-      </View>
+      </Surface>
     </View>
   );
 }

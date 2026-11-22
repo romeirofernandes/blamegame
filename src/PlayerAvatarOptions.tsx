@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { validatePlayerAvatar } from './avatar';
-import { Avatar, Body, Button } from './ui';
+import { Avatar, Body, Button, Surface } from './ui';
 
 export function usePlayerAvatar(uid: string | undefined) {
   const [saved, setSaved] = useState<{ uid: string; avatar?: string }>();
@@ -84,7 +84,7 @@ export function PlayerAvatarOptions({ seed, avatar, ready, update }: {
   }
 
   return (
-    <View className="gap-3 rounded-[20px] border border-line bg-panel p-4">
+    <Surface className="gap-3 p-4">
       <View className="flex-row items-center gap-3">
         <Avatar player={{ id: seed, avatar }} />
         <Body className="flex-1 text-sm text-muted">Everyone in your next room can see this avatar.</Body>
@@ -92,8 +92,16 @@ export function PlayerAvatarOptions({ seed, avatar, ready, update }: {
       <Button tone="secondary" arrow={false} onPress={() => void choosePhoto()} disabled={!ready || busy}>
         {busy ? 'Updating avatar…' : avatar ? 'Change photo' : 'Choose photo'}
       </Button>
-      {avatar ? <Button tone="quiet" arrow={false} onPress={() => void removePhoto()} disabled={busy}>Use generated avatar</Button> : null}
-      {error ? <Body accessibilityRole="alert" className="text-sm text-peach">{error}</Body> : null}
-    </View>
+      {avatar ? (
+        <Button tone="quiet" arrow={false} onPress={() => void removePhoto()} disabled={busy}>
+          Use generated avatar
+        </Button>
+      ) : null}
+      {error ? (
+        <Surface className="border-peach/40 px-3 py-2">
+          <Body accessibilityRole="alert" className="text-sm text-peach">{error}</Body>
+        </Surface>
+      ) : null}
+    </Surface>
   );
 }

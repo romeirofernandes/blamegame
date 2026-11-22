@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, Text, TextInput, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
@@ -9,7 +9,7 @@ import PartyIcon from '@hugeicons/core-free-icons/PartyIcon';
 import { getDeck } from './decks';
 import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
-import { Body, Button, hapticSelect, Label, PresenceAvatar, PromptCard, Tap, Title } from './ui';
+import { Body, Button, Field, hapticSelect, Label, PresenceAvatar, PromptCard, Surface, Tap, Title } from './ui';
 
 export function RoundScreen({ room, host, demo, act, leave, disabled }: {
   room: RoomView;
@@ -51,10 +51,10 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
         </View>
         <View className="gap-2">
           {room.recap?.map((item) => (
-            <View key={item.question} className="gap-1 rounded-[18px] border border-line bg-panel p-4">
+            <Surface key={item.question} className="gap-1 p-4">
               <Body>{item.question}</Body>
               {item.leaders.length > 0 && <Label className="tracking-[1px] text-lilac-strong">{item.leaders.map((id) => player(id).name).join(' & ')}</Label>}
-            </View>
+            </Surface>
           ))}
         </View>
         <Button onPress={leave}>Back to home</Button>
@@ -91,11 +91,11 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
       ) : (
         <View className="gap-4">
           {room.hasSubmitted ? (
-            <View className="gap-2 rounded-[20px] border border-line bg-panel p-5">
+            <Surface className="gap-2 p-5">
               <HugeiconsIcon icon={CheckmarkCircle02Icon} size={28} color={colors.limeStrong} strokeWidth={2} />
               <Title className="text-[34px] leading-[36px]" accessibilityLiveRegion="polite">Locked in.</Title>
               <Body className="text-muted">{demo ? 'Your demo friends have answered, too.' : 'Answers stay sealed until the reveal.'}</Body>
-            </View>
+            </Surface>
           ) : (
             <>
               {card.kind === 'pick' ? (
@@ -116,10 +116,17 @@ export function RoundScreen({ room, host, demo, act, leave, disabled }: {
                 </View>
               ) : (
                 <View className="gap-2">
-                  <Label>Your answer</Label>
-                  <TextInput accessibilityLabel="Your answer" value={answer} onChangeText={setAnswer} maxLength={120}
-                    multiline editable={!disabled} placeholder="A short answer works best" placeholderTextColor={colors.muted}
-                    className="min-h-28 rounded-[18px] border border-line bg-panel p-4 align-top font-body text-base leading-6 text-cloud" />
+                  <Field
+                    label="Your answer"
+                    accessibilityLabel="Your answer"
+                    value={answer}
+                    onChangeText={setAnswer}
+                    maxLength={120}
+                    multiline
+                    editable={!disabled}
+                    placeholder="A short answer works best"
+                    className="min-h-28 rounded-[18px] p-4 align-top leading-6"
+                  />
                   <Label className="text-right tracking-[0px]">{answer.length}/120</Label>
                 </View>
               )}
@@ -161,7 +168,7 @@ function Reveal({ room }: { room: RoomView }) {
             {picks.map((pick) => {
               const person = player(pick.playerId);
               return (
-                <View key={pick.playerId} className="gap-2 rounded-[17px] border border-line bg-panel p-3">
+                <Surface key={pick.playerId} className="gap-2 p-3">
                   <View className="flex-row items-center gap-3">
                     <PresenceAvatar player={person} />
                     <View className="flex-1">
@@ -174,7 +181,7 @@ function Reveal({ room }: { room: RoomView }) {
                     <View className="h-full rounded-full bg-lilac" style={{ width: `${(pick.count / room.players.length) * 100}%` }} />
                   </View>
                   {pick.voters && <Body className="text-sm leading-5 text-muted">Picked by {pick.voters.map((id) => player(id).name).join(', ')}</Body>}
-                </View>
+                </Surface>
               );
             })}
           </View>
@@ -184,10 +191,10 @@ function Reveal({ room }: { room: RoomView }) {
         <>
           <Label className="text-lime-strong">What the room said</Label>
           {answers.map((answer, index) => (
-            <View key={index} className="gap-1 rounded-[17px] border border-line bg-panel p-4">
+            <Surface key={index} className="gap-1 p-4">
               <Body>{answer.text}</Body>
               {!!answer.author && <Label className="tracking-[1px] text-lilac-strong">{player(answer.author).name}</Label>}
-            </View>
+            </Surface>
           ))}
         </>
       )}

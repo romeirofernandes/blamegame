@@ -26,6 +26,7 @@ function newToken() {
 export function webOrigin() {
   if (serverUrl) return serverUrl;
   if (Platform.OS === 'web') {
+    if (typeof location === 'undefined') return '';
     if (location.port === '8081') return `${location.protocol}//${location.hostname}:3000`;
     return location.origin;
   }
@@ -39,7 +40,9 @@ export function useRoom(account: Account | null, authReady: boolean) {
   const [connected, setConnected] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [readyUid, setReadyUid] = useState<string>();
   const uid = account?.uid;
+  const origin = webOrigin();
   const getIdToken = useEffectEvent(() => account?.getIdToken());
 
   useEffect(() => {
@@ -47,7 +50,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
     setError('');
     setPending(false);
     setConnected(false);
-    const origin = webOrigin();
+    setReadyUid(undefined);
     if (!origin || !authReady || !uid) return;
 
     const storageKey = `blame-game-session:${uid}`;
@@ -185,6 +188,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
     }).catch(() => {}).finally(() => {
       if (stopped) return;
       identity ??= { token: newToken() };
+      setReadyUid(uid);
       if (identity.code) open({ type: 'resume', code: identity.code, token: identity.token });
     });
 
@@ -193,10 +197,12 @@ export function useRoom(account: Account | null, authReady: boolean) {
       controller.current = null;
       disconnect();
     };
-  }, [authReady, uid]);
+  }, [authReady, origin, uid]);
 
   return {
     room,
+    available: Boolean(origin),
+    ready: authReady && Boolean(uid && uid === readyUid),
     connected,
     pending,
     error,

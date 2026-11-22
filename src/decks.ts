@@ -5,7 +5,7 @@ export const decks = [
     id: 'group-chat', name: 'Group Chat', description: 'Voice notes, screenshots, and the lore behind them.',
     label: 'THE CLASSIC', color: '#c8adff',
     cards: [
-      { kind: 'pick', question: 'Who would read 83 messages and still ask what time we’re meeting?' },
+      { kind: 'pick', question: 'Who reads 83 messages and still asks “what time?”' },
       { kind: 'pick', question: 'Who sends “on my way” while looking for their socks?' },
       { kind: 'pick', question: 'Who says “quick story” and starts with “when I was born”?' },
       { kind: 'pick', question: 'Who revives a dead group chat with one photo?' },

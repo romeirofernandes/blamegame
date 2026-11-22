@@ -1,36 +1,11 @@
 import { useRef, useState } from 'react';
-import { Pressable, TextInput, View, type TextInputInstance } from 'react-native';
-import { Body, Label, Tap, Title } from './ui';
-import { useAppearance } from './appearance';
+import { View, type TextInputInstance } from 'react-native';
+import { Tabs, TabsList, TabsTrigger } from './beui/tabs';
+import { Body, Button, Field, Label, Surface, Title } from './ui';
 import { useAuth } from './auth';
 
 type AccountScreenProps = { forPlay?: boolean };
 type FormMode = 'signin' | 'signup';
-
-function AccountAction({ children, onPress, disabled, primary = false }: {
-  children: string;
-  onPress: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-}) {
-  const { colors } = useAppearance();
-  return (
-    <Tap label={children} onPress={onPress} disabled={disabled} className="rounded-[18px]">
-      <View
-        className="min-h-14 flex-row items-center justify-center rounded-[18px] border px-4 py-3"
-        style={{
-          backgroundColor: primary ? colors.lime : colors.panel,
-          borderColor: primary ? colors.ink : colors.muted,
-          opacity: disabled ? 0.5 : 1,
-        }}
-      >
-        <Body className="text-center font-boldface" style={{ color: primary ? colors.ink : colors.cloud }}>
-          {children}
-        </Body>
-      </View>
-    </Tap>
-  );
-}
 
 function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout' | 'google', linkingGuest: boolean) {
   const code = (error as { code?: string } | null)?.code;
@@ -72,7 +47,6 @@ function errorMessage(error: unknown, action: 'signin' | 'signup' | 'signout' | 
 }
 
 export function AccountScreen({ forPlay }: AccountScreenProps) {
-  const { colors } = useAppearance();
   const { user, loading, configured, googleSignInAvailable, signIn, signUp, signInWithGoogle, signOut } = useAuth();
   const [mode, setMode] = useState<FormMode>('signin');
   const [email, setEmail] = useState('');
@@ -144,13 +118,13 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
 
   if (!configured) {
     return (
-      <View className="gap-4 rounded-[24px] border border-line bg-panel p-5">
+      <Surface className="gap-4 p-5">
         <Label className="text-peach">Account setup</Label>
         <Title className="text-[44px] leading-[1]">Account setup needed</Title>
         <Body className="text-muted">
           Ask the app owner to finish Firebase setup so you can sign in and play.
         </Body>
-      </View>
+      </Surface>
     );
   }
 
@@ -172,14 +146,20 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
           <Body className="text-muted">{user.email || 'Your account is ready.'}</Body>
         </View>
         {linkedGuestUid === user.uid && (
-          <Body className="rounded-xl border border-line bg-panel p-3 text-muted">
-            Guest account saved. Your player identity stayed the same.
-          </Body>
+          <Surface className="p-3">
+            <Body className="text-muted">
+              Guest account saved. Your player identity stayed the same.
+            </Body>
+          </Surface>
         )}
-        {!!error && <Body accessibilityRole="alert" className="rounded-xl border border-peach/40 bg-panel p-3 text-peach">{error}</Body>}
-        <AccountAction onPress={() => void run('signout')} disabled={busy}>
+        {!!error && (
+          <Surface className="border-peach/40 p-3">
+            <Body accessibilityRole="alert" className="text-peach">{error}</Body>
+          </Surface>
+        )}
+        <Button tone="secondary" arrow={false} onPress={() => void run('signout')} disabled={busy}>
           {busy ? 'Signing out…' : 'Sign out'}
-        </AccountAction>
+        </Button>
       </View>
     );
   }
@@ -199,69 +179,58 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
       </View>
 
       {!isGuest && (
-        <View className="flex-row rounded-[16px] border border-line bg-panel p-1">
-          {(['signin', 'signup'] as const).map((item) => {
-            const selected = mode === item;
-            return (
-              <Pressable
-                key={item}
-                accessibilityRole="button"
-                accessibilityLabel={item === 'signin' ? 'Sign-in form' : 'Account creation form'}
-                accessibilityState={{ selected }}
-                disabled={busy}
-                className={`min-h-12 flex-1 items-center justify-center rounded-[12px] border web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${selected ? 'border-lilac-strong bg-lilac' : 'border-transparent'}`}
-                onPress={() => { setMode(item); setError(''); }}
-              >
-                <Body className={selected ? 'font-boldface text-ink' : 'text-muted'}>
-                  {item === 'signin' ? 'Sign in' : 'Create account'}
-                </Body>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Tabs
+          value={mode}
+          values={['signin', 'signup']}
+          onValueChange={(value) => {
+            if (!busy && (value === 'signin' || value === 'signup')) {
+              setMode(value);
+              setError('');
+            }
+          }}
+        >
+          <TabsList accessibilityLabel="Account form">
+            <TabsTrigger value="signin" disabled={busy}>Sign in</TabsTrigger>
+            <TabsTrigger value="signup" disabled={busy}>Create account</TabsTrigger>
+          </TabsList>
+        </Tabs>
       )}
 
       {googleSignInAvailable && (
-        <AccountAction onPress={() => void runGoogleSignIn()} disabled={busy}>
+        <Button tone="secondary" arrow={false} onPress={() => void runGoogleSignIn()} disabled={busy}>
           {isGuest ? 'Link Google account' : 'Continue with Google'}
-        </AccountAction>
+        </Button>
       )}
 
       <View className="gap-4">
+        <Field
+          label="Email"
+          ref={emailInput}
+          accessibilityLabel="Email"
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          className="web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          onSubmitEditing={() => passwordInput.current?.focus()}
+          placeholder="you@example.com"
+          returnKeyType="next"
+          textContentType="emailAddress"
+          value={email}
+        />
         <View className="gap-2">
-          <Label>Email</Label>
-          <TextInput
-            ref={emailInput}
-            accessibilityLabel="Email"
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-            className="min-h-14 rounded-[16px] border border-line bg-panel px-4 py-3 font-body text-base web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            onSubmitEditing={() => passwordInput.current?.focus()}
-            placeholder="you@example.com"
-            placeholderTextColor={colors.muted}
-            returnKeyType="next"
-            style={{ borderColor: colors.muted, color: colors.cloud }}
-            textContentType="emailAddress"
-            value={email}
-          />
-        </View>
-        <View className="gap-2">
-          <Label>Password</Label>
-          <TextInput
+          <Field
+            label="Password"
             ref={passwordInput}
             accessibilityLabel="Password"
             autoComplete={mode === 'signup' || isGuest ? 'new-password' : 'current-password'}
-            className="min-h-14 rounded-[16px] border border-line bg-panel px-4 py-3 font-body text-base web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
+            className="web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong"
             onChangeText={setPassword}
             onSubmitEditing={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')}
             placeholder={mode === 'signup' || isGuest ? 'At least 6 characters' : 'Enter your password'}
-            placeholderTextColor={colors.muted}
             returnKeyType="go"
             secureTextEntry
-            style={{ borderColor: colors.muted, color: colors.cloud }}
             textContentType={mode === 'signup' || isGuest ? 'newPassword' : 'password'}
             value={password}
           />
@@ -269,16 +238,20 @@ export function AccountScreen({ forPlay }: AccountScreenProps) {
         </View>
       </View>
 
-      {!!error && <Body accessibilityRole="alert" className="rounded-xl border border-peach/40 bg-panel p-3 text-peach">{error}</Body>}
+      {!!error && (
+        <Surface className="border-peach/40 p-3">
+          <Body accessibilityRole="alert" className="text-peach">{error}</Body>
+        </Surface>
+      )}
 
       <View className="gap-3">
-        <AccountAction primary onPress={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')} disabled={busy}>
+        <Button onPress={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')} disabled={busy}>
           {busy ? 'Connecting…' : isGuest ? 'Save account' : mode === 'signup' ? 'Create account' : 'Sign in'}
-        </AccountAction>
+        </Button>
         {isGuest && (
-          <AccountAction onPress={() => void run('signout')} disabled={busy}>
+          <Button tone="secondary" arrow={false} onPress={() => void run('signout')} disabled={busy}>
             {busy ? 'Updating account…' : 'Sign out'}
-          </AccountAction>
+          </Button>
         )}
       </View>
       <Body accessibilityLiveRegion="polite" className="min-h-5 text-center text-sm text-muted">
