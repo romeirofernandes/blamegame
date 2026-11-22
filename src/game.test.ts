@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { expect, test } from 'bun:test';
 import { addPlayer, applyAction, createRoom, type Mode, viewRoom } from './game';
+import { DEMO_PLAYER, demoAction, newDemo } from './demo';
 
 function started(mode: Mode, deckId = 'group-chat', allowSelfVote = false) {
   const room = createRoom('ABCDE', 'host', 'Maya', deckId, mode, allowSelfVote);
@@ -81,4 +82,18 @@ test('passes count as ready but do not create vote or answer results', () => {
   expect(viewRoom(room, 'host').submitted).toBe(1);
   applyAction(room, 'host', { type: 'reveal' });
   expect(viewRoom(room, 'host').result).toEqual({ picks: [], answers: [] });
+});
+
+test('demo friends do not cast self votes when self-voting is disabled', () => {
+  let room = newDemo();
+  for (let round = 1; round <= viewRoom(room, DEMO_PLAYER).total; round++) {
+    const card = room.rounds.at(-1)!.card;
+    const submission = card.kind === 'pick'
+      ? { kind: 'pick' as const, value: room.players.find((player) => player.id !== DEMO_PLAYER)!.id }
+      : { kind: 'write' as const, value: 'A short demo answer.' };
+    room = demoAction(room, { type: 'submit', round, submission });
+    expect(viewRoom(room, DEMO_PLAYER).submitted).toBe(room.players.length);
+    room = demoAction(room, { type: 'reveal' });
+    room = demoAction(room, { type: 'next' });
+  }
 });
