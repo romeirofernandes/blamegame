@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
+import GeistPixelSquare from '../assets/fonts/GeistPixel-Square.ttf';
 import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
 import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
 import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
@@ -41,7 +42,7 @@ import { PlayerAvatarOptions, usePlayerAvatar } from './PlayerAvatarOptions';
 type Page = 'home' | 'host' | 'join' | 'account';
 
 export default function App() {
-  const [loaded, error] = useFonts({ SpaceGrotesk_700Bold, DMSans_500Medium, DMSans_700Bold });
+  const [loaded, error] = useFonts({ GeistPixelSquare, SpaceGrotesk_700Bold, DMSans_500Medium, DMSans_700Bold });
   return (
     <SafeAreaProvider>
       <AppearanceProvider>
@@ -356,7 +357,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
       <Surface className="gap-3 rounded-[24px] bg-lilac p-5">
         <Label className="text-ink">Room code</Label>
         <View className="flex-row items-center justify-between gap-2">
-          <Text selectable className="shrink font-display text-[52px] leading-[1.1] tracking-[4px] text-ink">{room.code}</Text>
+          <Text selectable className="shrink font-code text-[52px] leading-[1.1] tracking-[4px] text-ink">{room.code}</Text>
           <Tap label="Copy room code" onPress={() => void invite(true)} className="w-12 bg-ink">
             <View className="items-center"><HugeiconsIcon icon={Copy01Icon} size={22} color={colors.lilac} /></View>
           </Tap>
