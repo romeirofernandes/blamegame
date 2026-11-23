@@ -113,7 +113,11 @@ function GameApp() {
   }
 
   return (
-    <SafeAreaView edges={showTabs ? ['top', 'left', 'right'] : undefined} className="flex-1 bg-canvas">
+    <SafeAreaView
+      edges={showTabs ? ['top', 'left', 'right'] : undefined}
+      className="flex-1 bg-canvas"
+      style={{ flex: 1 }}
+    >
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <View className="mx-auto w-full max-w-[480px] flex-1 bg-canvas web:border-x web:border-line/50">
