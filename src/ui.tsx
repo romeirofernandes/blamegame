@@ -65,22 +65,22 @@ export function Button({ children, onPress, tone = 'primary', disabled, arrow = 
   );
 }
 
-export function Avatar({ player }: { player: { id: string; avatar?: string; avatarSeed?: string; avatarVariant?: number } }) {
+export function Avatar({ player, size = 40 }: { player: { id: string; avatar?: string; avatarSeed?: string; avatarVariant?: number }; size?: number }) {
   const [failedPhoto, setFailedPhoto] = useState<string>();
   const pattern = useMemo(
     () => ditherAvatar(player.avatarSeed ?? player.id, player.avatarVariant),
     [player.id, player.avatarSeed, player.avatarVariant],
   );
   return (
-    <View aria-hidden className="size-10 shrink-0 overflow-hidden rounded-full">
+    <View aria-hidden className="shrink-0 overflow-hidden rounded-full" style={{ width: size, height: size }}>
       {player.avatar && player.avatar !== failedPhoto ? (
         <Image
           source={{ uri: player.avatar }}
-          className="size-10"
+          style={{ width: size, height: size }}
           onError={() => setFailedPhoto(player.avatar)}
         />
       ) : (
-        <Svg width={40} height={40} viewBox={`0 0 ${DITHER_AVATAR_SIZE} ${DITHER_AVATAR_SIZE}`}>
+        <Svg width={size} height={size} viewBox={`0 0 ${DITHER_AVATAR_SIZE} ${DITHER_AVATAR_SIZE}`}>
           <Rect width={DITHER_AVATAR_SIZE} height={DITHER_AVATAR_SIZE} fill={pattern.fill} />
           <Path
             d={pattern.path}

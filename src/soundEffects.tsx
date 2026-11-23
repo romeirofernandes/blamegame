@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useReducedMotionPreference } from './beui/useReducedMotion';
 import { useSoundPlayback, type Cue } from './soundPlayback';
 
 const storageKey = 'blame-game:sound-effects';
@@ -19,7 +18,6 @@ export function SoundEffectsProvider({ children }: { children: ReactNode }) {
   const [enabled, setPreference] = useState(true);
   const active = useRef(false);
   const changed = useRef(false);
-  const reducedMotion = useReducedMotionPreference();
   const { play, stop } = useSoundPlayback();
 
   useEffect(() => {
@@ -41,8 +39,8 @@ export function SoundEffectsProvider({ children }: { children: ReactNode }) {
   }, [stop]);
 
   const playIfEnabled = useCallback((cue: Cue) => {
-    if (active.current && !reducedMotion) play(cue);
-  }, [play, reducedMotion]);
+    if (active.current) play(cue);
+  }, [play]);
   const value = useMemo(() => ({ enabled, setEnabled, play: playIfEnabled }), [enabled, setEnabled, playIfEnabled]);
 
   return <SoundEffectsContext.Provider value={value}>{children}</SoundEffectsContext.Provider>;

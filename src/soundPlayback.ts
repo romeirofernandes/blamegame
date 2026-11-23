@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { useAudioPlayer } from 'expo-audio';
+import { useCallback, useEffect, useRef } from 'react';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 
 export type Cue = 'tap' | 'toggle';
 
@@ -7,6 +7,10 @@ export function useSoundPlayback() {
   const tap = useAudioPlayer(require('../assets/sounds/tap.wav'));
   const toggle = useAudioPlayer(require('../assets/sounds/toggle.wav'));
   const request = useRef(0);
+
+  useEffect(() => {
+    void setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
+  }, []);
 
   const stop = useCallback(() => {
     request.current += 1;

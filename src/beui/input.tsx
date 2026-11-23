@@ -77,7 +77,18 @@ export function Field({
           keyboardAppearance={keyboardAppearance ?? theme}
           placeholderTextColor={placeholderTextColor ?? colors.muted}
           className={twMerge(INPUT_CLASSES, className)}
-          style={[borderStyle, style]}
+          style={[
+            borderStyle,
+            {
+              minHeight: 56,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              paddingRight: trailing ? 56 : 16,
+              includeFontPadding: false,
+              textAlignVertical: 'center',
+            },
+            style,
+          ]}
           onFocus={(event) => {
             setFocused(true);
             onFocus?.(event);

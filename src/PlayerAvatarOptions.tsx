@@ -215,9 +215,9 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
               <Body accessibilityRole="alert" className="mt-3 rounded-xl bg-peach/10 px-3 py-2 text-sm text-peach">{error}</Body>
             ) : null}
             <ScrollView className="mt-5 flex-1" contentContainerClassName="gap-3 pb-3" showsVerticalScrollIndicator={false}>
-              {Array.from({ length: Math.ceil(DITHER_AVATAR_VARIANT_COUNT / 4) }, (_, row) => (
+              {Array.from({ length: Math.ceil(DITHER_AVATAR_VARIANT_COUNT / 3) }, (_, row) => (
                 <View key={row} className="flex-row gap-3">
-                  {Array.from({ length: 4 }, (_, column) => row * 4 + column).map((variant) => {
+                  {Array.from({ length: 3 }, (_, column) => row * 3 + column).map((variant) => {
                     if (variant >= DITHER_AVATAR_VARIANT_COUNT) return <View key={variant} className="flex-1" />;
                     const selected = mode === 'generated' && avatarVariant === variant;
                     return (
@@ -229,8 +229,8 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
                         disabled={busy}
                         className="flex-1"
                       >
-                        <View className={`min-h-16 w-full items-center justify-center rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
-                          <Avatar player={{ id: seed, avatarVariant: variant }} />
+                        <View className={`min-h-[72px] w-full items-center justify-center rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
+                          <Avatar player={{ id: seed, avatarVariant: variant }} size={48} />
                         </View>
                       </Tap>
                     );

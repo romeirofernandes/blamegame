@@ -3,7 +3,7 @@
     "name": "Blame Game",
     "slug": "blame-game",
     "scheme": "blamegame",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#15131d",
     "icon": "./assets/app-icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.blame.game",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#15131d"

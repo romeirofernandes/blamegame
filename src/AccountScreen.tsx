@@ -224,7 +224,6 @@ export function AccountScreen({ forPlay, onAuthenticated }: AccountScreenProps) 
             accessibilityLabel="Password"
             accessibilityHint={mode === 'signup' ? 'Use at least 6 characters.' : undefined}
             autoComplete={mode === 'signup' || isGuest ? 'new-password' : 'current-password'}
-            className="pr-14"
             onChangeText={setPassword}
             onSubmitEditing={() => void run(isGuest || mode === 'signup' ? 'signup' : 'signin')}
             placeholder={mode === 'signup' || isGuest ? 'At least 6 characters' : 'Enter your password'}

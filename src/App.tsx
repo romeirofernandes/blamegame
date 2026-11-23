@@ -200,7 +200,7 @@ function GameApp() {
                         </View>
                       </Tap>
                     ) : (
-                      <Button tone="secondary" onPress={() => setPage('account')} disabled={loading}>
+                      <Button tone="primary" onPress={() => setPage('account')} disabled={loading}>
                         {user?.isAnonymous ? 'Save guest account' : configured ? 'Sign in or create account' : 'Account setup'}
                       </Button>
                     )}
