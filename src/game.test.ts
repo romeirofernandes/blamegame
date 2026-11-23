@@ -136,6 +136,44 @@ test('passes count as ready but do not create vote or answer results', () => {
   expect(viewRoom(room, 'host').result).toEqual({ picks: [], answers: [] });
 });
 
+test('recap keeps tied vote counts and shares write answers with the room attribution mode', () => {
+  const votes = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined, undefined, 1, () => 0);
+  addPlayer(votes, 'one', 'Jules');
+  addPlayer(votes, 'two', 'Sam');
+  applyAction(votes, 'host', { type: 'start' });
+  applyAction(votes, 'host', { type: 'submit', round: 1, submission: { kind: 'pick', value: 'one' } });
+  applyAction(votes, 'one', { type: 'submit', round: 1, submission: { kind: 'pick', value: 'two' } });
+  applyAction(votes, 'host', { type: 'reveal' });
+  applyAction(votes, 'host', { type: 'next' });
+  expect(viewRoom(votes, 'host').recap?.[0]).toMatchObject({
+    kind: 'pick', leaders: ['one', 'two'], leaderVotes: 1,
+  });
+
+  const writes = createRoom('ABCDE', 'host', 'Maya', 'spotlight', 'anonymous', false, undefined, undefined, undefined, 1, () => 0);
+  addPlayer(writes, 'one', 'Jules');
+  addPlayer(writes, 'two', 'Sam');
+  applyAction(writes, 'host', { type: 'start' });
+  applyAction(writes, 'one', { type: 'submit', round: 1, submission: { kind: 'write', value: 'A tiny parade.' } });
+  applyAction(writes, 'host', { type: 'reveal' });
+  applyAction(writes, 'host', { type: 'next' });
+  expect(viewRoom(writes, 'host').recap?.[0]).toMatchObject({
+    kind: 'write', leaders: [], answers: [{ text: 'A tiny parade.' }],
+  });
+
+  const passed = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined, undefined, 1, () => 0);
+  addPlayer(passed, 'one', 'Jules');
+  addPlayer(passed, 'two', 'Sam');
+  applyAction(passed, 'host', { type: 'start' });
+  for (const id of ['host', 'one', 'two']) {
+    applyAction(passed, id, { type: 'submit', round: 1, submission: { kind: 'pass' } });
+  }
+  applyAction(passed, 'host', { type: 'reveal' });
+  applyAction(passed, 'host', { type: 'next' });
+  expect(viewRoom(passed, 'host').recap?.[0]).toMatchObject({
+    kind: 'pick', leaders: [], responseCount: 3, passCount: 3,
+  });
+});
+
 test('demo friends do not cast self votes when self-voting is disabled', () => {
   let room = newDemo();
   expect(room.rounds.map((round) => round.card.question)).toEqual(

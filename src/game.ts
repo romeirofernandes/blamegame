@@ -1,4 +1,5 @@
-import { drawCards, getDeck, type Card } from './decks';
+import { drawCards, getDeck, sampleCards, type Card } from './decks';
+import { customDeckDetails, type CustomDeck, type CustomDeckDetails } from './customDeck';
 import { validatePlayerAvatar } from './avatar';
 import { DITHER_AVATAR_VARIANT_COUNT } from './dither-avatar';
 
@@ -19,11 +20,21 @@ type Result = {
   picks: { playerId: string; count: number; voters?: string[] }[];
   answers: { text: string; author?: string }[];
 };
+type RecapRound = {
+  question: string;
+  leaders: string[];
+  kind?: Card['kind'];
+  leaderVotes?: number;
+  responseCount?: number;
+  passCount?: number;
+  answers?: { text: string; author?: string }[];
+};
 type Round = { card: Card; submissions: Map<string, Submission> };
 export type Room = {
   code: string;
   host: string;
   deckId: string;
+  customDeck?: CustomDeckDetails;
   mode: Mode;
   allowSelfVote: boolean;
   totalRounds?: number;
@@ -38,6 +49,7 @@ export type RoomView = {
   me: string;
   host: string;
   deckId: string;
+  customDeck?: CustomDeckDetails;
   mode: Mode;
   phase: Phase;
   players: (Player & { online: boolean })[];
@@ -49,7 +61,7 @@ export type RoomView = {
   allowSelfVote: boolean;
   canReveal: boolean;
   result?: Result;
-  recap?: { question: string; leaders: string[] }[];
+  recap?: RecapRound[];
 };
 
 export type Action =
@@ -58,7 +70,7 @@ export type Action =
 
 export type Command = Action
   | {
-    type: 'create'; name: string; deckId: string; mode: Mode; token: string;
+    type: 'create'; name: string; deckId: string; mode: Mode; token: string; customDeck?: CustomDeck;
     allowSelfVote?: boolean; avatar?: string; avatarSeed?: string; avatarVariant?: number; roundCount?: number;
   }
   | { type: 'join'; name: string; code: string; token: string; avatar?: string; avatarSeed?: string; avatarVariant?: number }
@@ -83,11 +95,13 @@ export function createRoom(
   avatarSeed?: string,
   roundCount?: number,
   random: () => number = Math.random,
+  customDeck?: CustomDeck,
 ): Room {
   const totalRounds = roundCount ?? LEGACY_ROUND_COUNT;
   const room: Room = {
     code, host: id, deckId, mode, allowSelfVote, totalRounds,
-    cards: roundCount === undefined
+    ...(customDeck && { customDeck: customDeckDetails(customDeck) }),
+    cards: customDeck ? sampleCards(customDeck.cards, totalRounds, random) : roundCount === undefined
       ? getDeck(deckId)!.cards.slice(0, totalRounds)
       : drawCards(deckId, roundCount, random),
     phase: 'lobby', players: [], rounds: [],
@@ -217,7 +231,10 @@ export function viewRoom(room: Room, me: string, onlinePlayerIds?: Iterable<stri
   const round = room.rounds.at(-1);
   const online = onlinePlayerIds ? new Set(onlinePlayerIds) : new Set(room.players.map((player) => player.id));
   return {
-    code: room.code, me, host: room.host, deckId: room.deckId, mode: room.mode, phase: room.phase,
+    code: room.code, me, host: room.host, mode: room.mode, phase: room.phase,
+    // Older clients look up deckId locally. Send a built-in fallback alongside custom metadata.
+    deckId: room.customDeck ? 'group-chat' : room.deckId,
+    ...(room.customDeck && { customDeck: room.customDeck }),
     players: room.players.map((player) => ({ ...player, online: online.has(player.id) })),
     round: room.rounds.length, total: totalRounds(room),
     card: round?.card, submitted: round?.submissions.size ?? 0, hasSubmitted: round?.submissions.has(me) ?? false,
@@ -225,10 +242,17 @@ export function viewRoom(room: Room, me: string, onlinePlayerIds?: Iterable<stri
     canReveal: me === room.host && canRevealRound(room, round, online),
     result: room.phase === 'reveal' && round ? results(room, round) : undefined,
     recap: room.phase === 'recap' ? room.rounds.map((item) => {
-      const { picks } = results(room, item);
+      const result = results(room, item);
+      const { picks } = result;
+      const leaders = picks.filter((pick) => pick.count === picks[0]?.count);
       return {
         question: item.card.question,
-        leaders: picks.filter((pick) => pick.count === picks[0]?.count).map((pick) => pick.playerId),
+        kind: item.card.kind,
+        leaders: leaders.map((pick) => pick.playerId),
+        ...(leaders.length ? { leaderVotes: leaders[0].count } : {}),
+        responseCount: item.submissions.size,
+        passCount: [...item.submissions.values()].filter((submission) => submission.kind === 'pass').length,
+        ...(item.card.kind === 'write' ? { answers: result.answers } : {}),
       };
     }) : undefined,
   };

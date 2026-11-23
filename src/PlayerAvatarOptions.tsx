@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, View, type ViewInstance } from 'react-native';
+import { Modal, Pressable, ScrollView, useWindowDimensions, View, type ViewInstance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRandomValues } from 'expo-crypto';
 import { launchImageLibraryAsync } from 'expo-image-picker';
@@ -103,9 +103,10 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
   const [error, setError] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { colors } = useAppearance();
+  const { height } = useWindowDimensions();
   const reducedMotion = useReducedMotionPreference();
   const avatarButtonRef = useRef<ViewInstance>(null);
-  const closeButtonRef = useRef<ViewInstance>(null);
+  const firstChoiceRef = useRef<ViewInstance>(null);
   const drawerWasOpen = useRef(false);
 
   useEffect(() => {
@@ -200,7 +201,7 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
         accessibilityViewIsModal
         animationType={reducedMotion ? "none" : "fade"}
         onDismiss={() => avatarButtonRef.current?.focus?.()}
-        onShow={() => closeButtonRef.current?.focus?.()}
+        onShow={() => firstChoiceRef.current?.focus?.()}
         onRequestClose={closeDrawer}
         presentationStyle="overFullScreen"
         transparent
@@ -208,50 +209,53 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
       >
         <View className="flex-1 items-center justify-center bg-black/50 px-5 py-8">
           <Pressable accessible={false} className="absolute inset-0" onPress={closeDrawer} />
-          <View className="w-full max-w-[420px] overflow-hidden rounded-[24px] border border-line bg-canvas px-5 pt-5 pb-5" style={{ maxHeight: '86%' }}>
-            <Title className="text-[28px] leading-8">Choose an avatar</Title>
-            <Body className="mt-2 text-sm text-muted">Pick a pattern or upload a photo.</Body>
-            {error ? (
-              <Body accessibilityRole="alert" className="mt-3 rounded-xl bg-peach/10 px-3 py-2 text-sm text-peach">{error}</Body>
-            ) : null}
-            <ScrollView className="mt-5 flex-1" contentContainerClassName="gap-3 pb-3" showsVerticalScrollIndicator={false}>
-              {Array.from({ length: Math.ceil(DITHER_AVATAR_VARIANT_COUNT / 3) }, (_, row) => (
-                <View key={row} className="flex-row gap-3">
-                  {Array.from({ length: 3 }, (_, column) => row * 3 + column).map((variant) => {
-                    if (variant >= DITHER_AVATAR_VARIANT_COUNT) return <View key={variant} className="flex-1" />;
-                    const selected = mode === 'generated' && avatarVariant === variant;
-                    return (
-                      <Tap
-                        key={variant}
-                        label={`Generated avatar choice ${variant + 1}`}
-                        aria-pressed={selected}
-                        onPress={() => void chooseGenerated(variant)}
-                        disabled={busy}
-                        className="flex-1"
-                      >
-                        <View className={`min-h-[72px] w-full items-center justify-center rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
-                          <Avatar player={{ id: seed, avatarVariant: variant }} size={48} />
-                        </View>
-                      </Tap>
-                    );
-                  })}
-                </View>
-              ))}
-            </ScrollView>
-            {mode === 'generated' && hasPhoto ? (
-              <Button tone="quiet" arrow={false} onPress={() => void chooseSavedPhoto()} disabled={busy} className="mb-2">
-                Use saved photo
+          <View className="w-full max-w-[420px] overflow-hidden rounded-[24px] border border-line bg-canvas px-5 pt-5 pb-5">
+            <ScrollView style={{ flexGrow: 0, maxHeight: Math.max(96, height - 112) }} keyboardShouldPersistTaps="handled">
+              <Title className="text-[28px] leading-8">Choose an avatar</Title>
+              <Body className="mt-2 text-sm text-muted">Pick a pattern or upload a photo.</Body>
+              {error ? (
+                <Body accessibilityRole="alert" className="mt-3 rounded-xl bg-peach/10 px-3 py-2 text-sm text-peach">{error}</Body>
+              ) : null}
+              <View style={{ marginTop: 20, gap: 12, paddingBottom: 12 }}>
+                {Array.from({ length: Math.ceil(DITHER_AVATAR_VARIANT_COUNT / 3) }, (_, row) => (
+                  <View key={row} style={{ flexDirection: 'row', gap: 12 }}>
+                    {Array.from({ length: 3 }, (_, column) => row * 3 + column).map((variant) => {
+                      if (variant >= DITHER_AVATAR_VARIANT_COUNT) return <View key={variant} style={{ flex: 1 }} />;
+                      const selected = mode === 'generated' && avatarVariant === variant;
+                      return (
+                        <Tap
+                          key={variant}
+                          ref={variant === 0 ? firstChoiceRef : undefined}
+                          label={`Generated avatar choice ${variant + 1}`}
+                          aria-pressed={selected}
+                          onPress={() => void chooseGenerated(variant)}
+                          disabled={busy}
+                          style={{ flex: 1 }}
+                        >
+                          <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }} className={`rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
+                            <Avatar player={{ id: seed, avatarVariant: variant }} size={48} />
+                          </View>
+                        </Tap>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+              {mode === 'generated' && hasPhoto ? (
+                <Button tone="quiet" arrow={false} onPress={() => void chooseSavedPhoto()} disabled={busy} className="mb-2">
+                  Use saved photo
+                </Button>
+              ) : null}
+              <Button label="Upload a photo" tone="secondary" arrow={false} onPress={() => void choosePhoto()} disabled={!ready || busy} className="mb-2">
+                <>
+                  <HugeiconsIcon accessible={false} icon={ImageUpload01Icon} size={20} color={colors.cloud} strokeWidth={1.8} />
+                  <Body className="font-boldface text-base">Upload a photo</Body>
+                </>
               </Button>
-            ) : null}
-            <Button label="Upload a photo" tone="secondary" arrow={false} onPress={() => void choosePhoto()} disabled={!ready || busy} className="mb-2">
-              <>
-                <HugeiconsIcon accessible={false} icon={ImageUpload01Icon} size={20} color={colors.cloud} strokeWidth={1.8} />
-                <Body className="font-boldface text-base">Upload a photo</Body>
-              </>
-            </Button>
-            <Button ref={closeButtonRef} tone="secondary" arrow={false} onPress={closeDrawer}>
-              Close
-            </Button>
+              <Button tone="secondary" arrow={false} onPress={closeDrawer}>
+                Close
+              </Button>
+            </ScrollView>
           </View>
         </View>
       </Modal>

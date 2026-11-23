@@ -1,4 +1,21 @@
 export { GameRoom } from './room-hub.js';
+export { CommunityCatalog } from './community-catalog.js';
+import { verifyFirebaseIdToken } from './firebase-auth.js';
+
+const COMMUNITY_ORIGINS = new Set(['http://localhost:3001', 'http://127.0.0.1:3001']);
+
+function communityCors(response, request) {
+  const headers = new Headers(response.headers);
+  headers.append('Vary', 'Origin');
+  const origin = request.headers.get('origin');
+  if (origin && COMMUNITY_ORIGINS.has(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    headers.set('Access-Control-Max-Age', '600');
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
@@ -11,6 +28,33 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/health') return new Response('ok');
+
+    const communityMatch = /^\/api\/community(?:\/([^/]+))?$/.exec(url.pathname);
+    if (communityMatch) {
+      if (request.method === 'OPTIONS') return communityCors(new Response(null, { status: 204 }), request);
+      const resourceId = communityMatch[1];
+      const mine = url.searchParams.get('mine') === '1';
+      if (resourceId && !/^[\w-]{1,64}$/.test(resourceId)) return communityCors(new Response('Not found.', { status: 404 }), request);
+      if (resourceId && request.method !== 'DELETE') return communityCors(new Response('Method not allowed.', { status: 405 }), request);
+      if (!resourceId && !['GET', 'POST'].includes(request.method)) return communityCors(new Response('Method not allowed.', { status: 405 }), request);
+      if (mine && (request.method !== 'GET' || resourceId)) return communityCors(new Response('Bad request.', { status: 400 }), request);
+      const id = env.COMMUNITY_CATALOG.idFromName('public-community');
+      const catalog = env.COMMUNITY_CATALOG.get(id);
+      if (request.method === 'GET' && !mine) return communityCors(await catalog.fetch(request), request);
+      let ownerId;
+      try {
+        const authorization = request.headers.get('authorization') ?? '';
+        const match = /^Bearer (.+)$/.exec(authorization);
+        ownerId = await verifyFirebaseIdToken(match?.[1], env.FIREBASE_PROJECT_ID);
+      } catch (error) {
+        return communityCors(Response.json({ error: error instanceof Error ? error.message : 'Sign in with an account to manage public decks.' }, { status: 401 }), request);
+      }
+      const headers = new Headers(request.headers);
+      headers.set('x-blame-owner-id', ownerId);
+      if (resourceId) headers.set('x-blame-community-id', resourceId);
+      const routedRequest = new Request(request, { headers });
+      return communityCors(await catalog.fetch(routedRequest), request);
+    }
 
     let code;
     let creating = false;

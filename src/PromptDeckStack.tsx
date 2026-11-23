@@ -2,9 +2,10 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Text, View, type PressableProps } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { decks } from './decks';
-import { deckArt } from './deckArt';
+import { getDeckArt } from './deckArt';
 import { useReducedMotionPreference } from './beui/useReducedMotion';
 import { Body, Tap } from './ui';
+import type { CustomDeck } from './customDeck';
 
 type Deck = (typeof decks)[number];
 const spring = { stiffness: 420, damping: 34, mass: 0.7 } as const;
@@ -14,7 +15,10 @@ function orderFromDeck(order: string[], deckId: string) {
   return index > 0 ? [...order.slice(index), ...order.slice(0, index)] : order;
 }
 
-function DeckFace({ deck }: { deck: Deck }) {
+type StackDeck = { id: string; name: string; description: string; label: string; color: string; cover?: string };
+
+function DeckFace({ deck }: { deck: StackDeck }) {
+  const artId = deck.cover ?? deck.id;
   return (
     <View className="flex-1 justify-between overflow-hidden rounded-[25px] border border-ink/15 p-5" style={{ backgroundColor: deck.color }}>
       <View className="flex-row items-start justify-between gap-3">
@@ -23,7 +27,7 @@ function DeckFace({ deck }: { deck: Deck }) {
         </View>
       </View>
       <Image
-        source={deckArt[deck.id]}
+        source={getDeckArt(artId)}
         accessible={false}
         accessibilityElementsHidden
         importantForAccessibility="no"
@@ -41,27 +45,40 @@ function DeckFace({ deck }: { deck: Deck }) {
   );
 }
 
-export function PromptDeckStack({ selectedDeckId, onSelect }: { selectedDeckId: string; onSelect: (deckId: string) => void }) {
+export function PromptDeckStack({ selectedDeckId, onSelect, localDecks = [], localDeckIds = [] }: { selectedDeckId: string; onSelect: (deckId: string) => void; localDecks?: CustomDeck[]; localDeckIds?: string[] }) {
+  const stackDecks: StackDeck[] = [
+    ...decks,
+    ...localDecks.map((deck, index) => ({
+      id: localDeckIds[index] ?? `local-${index}`,
+      name: deck.name,
+      description: 'Your prompts, ready for the room.',
+      label: 'YOUR DECK',
+      color: '#c8adff',
+      cover: deck.cover,
+    })),
+  ];
+  const deckIds = stackDecks.map(({ id }) => id);
   const reducedMotion = useReducedMotionPreference();
   const translateX = useSharedValue(0);
   const tuckX = useSharedValue(0);
   const isLeaving = useRef(false);
   const suppressSwipeClick = useRef(false);
   const [order, setOrder] = useState(() => {
-    const selectedIndex = decks.findIndex((deck) => deck.id === selectedDeckId);
-    return selectedIndex > 0 ? [...decks.slice(selectedIndex), ...decks.slice(0, selectedIndex)].map(({ id }) => id) : decks.map(({ id }) => id);
+    const selectedIndex = stackDecks.findIndex((deck) => deck.id === selectedDeckId);
+    return selectedIndex > 0 ? [...stackDecks.slice(selectedIndex), ...stackDecks.slice(0, selectedIndex)].map(({ id }) => id) : stackDecks.map(({ id }) => id);
   });
   // Make the externally selected deck authoritative during render. The layout
   // effect below persists this order, but the selected card must already lead
   // on the first render after navigation/remount.
-  const displayedOrder = orderFromDeck(order, selectedDeckId);
-  const activeDeck = decks.find((deck) => deck.id === displayedOrder[0]) ?? decks[0];
+  const currentOrder = [...order.filter((id) => deckIds.includes(id)), ...deckIds.filter((id) => !order.includes(id))];
+  const displayedOrder = orderFromDeck(currentOrder, selectedDeckId);
+  const activeDeck = stackDecks.find((deck) => deck.id === displayedOrder[0]) ?? stackDecks[0];
 
   useLayoutEffect(() => {
-    setOrder((current) => orderFromDeck(current, selectedDeckId));
+    setOrder((current) => orderFromDeck([...current.filter((id) => deckIds.includes(id)), ...deckIds.filter((id) => !current.includes(id))], selectedDeckId));
     translateX.value = 0;
     isLeaving.current = false;
-  }, [selectedDeckId, translateX]);
+  }, [deckIds.join('|'), selectedDeckId, translateX]);
 
   const sendToBack = useCallback(
     (exit: number) => {
@@ -135,7 +152,7 @@ export function PromptDeckStack({ selectedDeckId, onSelect }: { selectedDeckId: 
   return (
     <View className="relative min-h-[240px]" style={{ flexGrow: 1, maxHeight: 330, marginTop: -5 }}>
       {displayedOrder.slice(1).map((id, index) => {
-        const deck = decks.find((item) => item.id === id) ?? decks[0];
+        const deck = stackDecks.find((item) => item.id === id) ?? stackDecks[0];
         const depth = Math.min(index + 1, 5);
         return (
           <Animated.View

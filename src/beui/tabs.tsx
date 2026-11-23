@@ -237,6 +237,8 @@ export type TabsTriggerProps = Omit<
 > & {
   value: string;
   icon?: IconSource;
+  labelFontSize?: number;
+  horizontalPadding?: number;
   children: ReactNode;
   className?: string;
   onPress?: PressableProps["onPress"];
@@ -247,10 +249,12 @@ function TabContent({
   children,
   icon,
   color,
+  labelFontSize,
 }: {
   children: ReactNode;
   icon?: IconSource;
   color: string;
+  labelFontSize?: number;
 }) {
   return (
     <View className="items-center justify-center gap-1">
@@ -265,7 +269,7 @@ function TabContent({
         </View>
       )}
       {typeof children === "string" || typeof children === "number" ? (
-        <Text numberOfLines={1} className="font-boldface text-xs leading-4" style={{ color }}>
+        <Text numberOfLines={1} className="font-boldface text-xs leading-4" style={{ color, ...(labelFontSize && { fontSize: labelFontSize }) }}>
           {children}
         </Text>
       ) : (
@@ -295,6 +299,8 @@ function overlap(
 export function TabsTrigger({
   value,
   icon,
+  labelFontSize,
+  horizontalPadding,
   children,
   className = "",
   accessibilityLabel,
@@ -363,7 +369,8 @@ export function TabsTrigger({
       aria-selected={selected}
       tabIndex={selected ? 0 : -1}
       disabled={disabled}
-      className={`min-w-0 min-h-14 flex-1 items-center justify-center rounded-full px-2 py-1 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${disabled ? "opacity-50" : ""} ${className}`}
+      className={`min-w-0 min-h-14 flex-1 items-center justify-center rounded-full py-1 web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong ${disabled ? "opacity-50" : ""} ${className}`}
+      style={{ paddingHorizontal: horizontalPadding ?? 8 }}
       onKeyDown={handleKeyDown}
       onLayout={(event) => {
         const layout = event.nativeEvent.layout;
@@ -377,7 +384,7 @@ export function TabsTrigger({
         if (!event.defaultPrevented) select(value);
       }}
     >
-      <TabContent icon={icon} color={colors.muted}>
+      <TabContent icon={icon} color={colors.muted} labelFontSize={labelFontSize}>
         {children}
       </TabContent>
       <Animated.View
@@ -391,7 +398,7 @@ export function TabsTrigger({
           className="items-center justify-center rounded-full"
           style={[styles.clipInner, innerStyle]}
         >
-          <TabContent icon={icon} color={colors.lilacStrong}>
+          <TabContent icon={icon} color={colors.lilacStrong} labelFontSize={labelFontSize}>
             {children}
           </TabContent>
         </Animated.View>

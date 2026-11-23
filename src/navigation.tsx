@@ -1,22 +1,26 @@
+import { CustomDecks } from './CustomDecks';
+import type { CustomDeck } from './customDeck';
 import { type ReactNode } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import Cards01Icon from "@hugeicons/core-free-icons/Cards01Icon";
 import PlayIcon from "@hugeicons/core-free-icons/PlayIcon";
 import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon";
+import UserGroupIcon from "@hugeicons/core-free-icons/UserGroupIcon";
 import { decks } from "./decks";
-import { deckArt } from "./deckArt";
+import { getDeckArt } from "./deckArt";
 import { Body, Button, Label, Surface, Tap, Title, hapticSelect } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "./beui/tabs";
 import { useSoundEffects } from "./soundEffects";
 
-export type GameDestination = "play" | "decks" | "settings";
+export type GameDestination = "play" | "decks" | "community" | "settings";
 
 const destinations = [
   { id: "play", label: "Play", icon: PlayIcon },
   { id: "decks", label: "Decks", icon: Cards01Icon },
   { id: "settings", label: "Settings", icon: Settings01Icon },
+  { id: "community", label: "Community", icon: UserGroupIcon },
 ] as const satisfies {
   id: GameDestination;
   label: string;
@@ -32,6 +36,7 @@ export function GameTabBar({
   onChange: (destination: GameDestination) => void;
 }) {
   const { play } = useSoundEffects();
+  const { width } = useWindowDimensions();
   return (
     <SafeAreaView edges={["bottom"]} className="border-t border-line/40 bg-panel">
       <Tabs
@@ -43,13 +48,15 @@ export function GameTabBar({
           play("tap");
           hapticSelect();
         }}
-        className="mx-auto w-full max-w-[480px] px-4 py-1"
+        className="mx-auto w-full max-w-[480px] px-2 py-1"
       >
         <TabsList accessibilityLabel="Game navigation">
           {destinations.map(({ id, label, icon }) => (
             <TabsTrigger
               key={id}
               value={id}
+              labelFontSize={width <= 340 ? 10 : undefined}
+              horizontalPadding={0}
               icon={({ size, color }) => (
                 <HugeiconsIcon
                   accessible={false}
@@ -72,8 +79,18 @@ export function GameTabBar({
 
 export function DecksScreen({
   onHost,
+  localDecks,
+  localDeckIds,
+  decksLoaded,
+  loadError,
+  saveDecks,
 }: {
   onHost: (deckId: string) => void;
+  localDecks: CustomDeck[];
+  localDeckIds: string[];
+  decksLoaded: boolean;
+  loadError: string;
+  saveDecks: (decks: CustomDeck[], baseDecks: CustomDeck[]) => Promise<void>;
 }) {
   return (
     <View className="gap-6">
@@ -83,6 +100,8 @@ export function DecksScreen({
           Pick a mood for the room.
         </Body>
       </View>
+      {!!loadError && <Body accessibilityRole="alert" className="text-sm text-peach">{loadError}</Body>}
+      <CustomDecks saved={localDecks} loaded={decksLoaded} saveDecks={saveDecks} onHost={(selected) => onHost(localDeckIds[localDecks.indexOf(selected)] ?? '')} />
       <View className="gap-4">
         {decks.map((deck) => {
           const sample = deck.cards[0];
@@ -96,7 +115,7 @@ export function DecksScreen({
                     <Body className="text-sm leading-5 text-muted">{deck.description}</Body>
                   </View>
                   <Image
-                    source={deckArt[deck.id]}
+                    source={getDeckArt(deck.id)}
                     accessible={false}
                     accessibilityElementsHidden
                     importantForAccessibility="no"

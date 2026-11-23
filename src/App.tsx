@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Share, Text, View, type ScrollViewInstance } from 'react-native';
+import { Animated, Image, KeyboardAvoidingView, Platform, ScrollView, Share, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -12,11 +12,17 @@ import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import ArrowLeft01Icon from '@hugeicons/core-free-icons/ArrowLeft01Icon';
 import ArrowUpRight01Icon from '@hugeicons/core-free-icons/ArrowUpRight01Icon';
+import { Check } from 'lucide-react-native';
+import { LaunchScreen } from './LaunchScreen';
+import { useReducedMotionPreference } from './beui/useReducedMotion';
 import Copy01Icon from '@hugeicons/core-free-icons/Copy01Icon';
 import UserGroupIcon from '@hugeicons/core-free-icons/UserGroupIcon';
 import LogOutIcon from '@hugeicons/core-free-icons/LogOutIcon';
+import { CUSTOM_DECK_ID, type CustomDeck } from './customDeck';
+import { getDeckArt } from './deckArt';
 import { decks, getDeck } from './decks';
-import { MIN_PLAYERS, MIN_ROUNDS, type Mode, type RoomView } from './game';
+import { demoAction, DEMO_PLAYER, newDemo } from './demo';
+import { MIN_PLAYERS, MIN_ROUNDS, viewRoom, type Mode, type RoomView } from './game';
 import { Body, Button, Field, GameSwitch, hapticSelect, Label, PresenceAvatar, Surface, Tap, Title } from './ui';
 import { PromptDeckStack } from './PromptDeckStack';
 import { useRoom, webOrigin } from './useRoom';
@@ -29,6 +35,13 @@ import { AccountScreen } from './AccountScreen';
 import { PlayerAvatarOptions, usePlayerAvatar } from './PlayerAvatarOptions';
 import { SoundEffectsProvider, useSoundEffects } from './soundEffects';
 import { HowToPlayControls, HowToPlayScreen, howToPlaySlideCount } from './HowToPlayScreen';
+import { CommunityScreen } from './CommunityScreen';
+import { useDeckLibrary } from './useDeckLibrary';
+
+// Interactive fixtures for checking room-only screens in the local web preview.
+const preview = __DEV__ && Platform.OS === 'web' && typeof location !== 'undefined'
+  ? new URLSearchParams(location.search).get('preview')
+  : null;
 
 type Page = 'home' | 'host' | 'join' | 'account' | 'guide';
 
@@ -39,7 +52,7 @@ export default function App() {
       <AppearanceProvider>
         <SoundEffectsProvider>
           <AuthProvider>
-            {loaded || error ? <GameApp /> : <View className="flex-1 bg-canvas" />}
+            <LaunchScreen ready={loaded || Boolean(error)}><GameApp /></LaunchScreen>
           </AuthProvider>
         </SoundEffectsProvider>
       </AppearanceProvider>
@@ -52,13 +65,31 @@ function GameApp() {
   const { user, loading, configured, signOut } = useAuth();
   const player = !loading && user && !user.isAnonymous ? user : null;
   const online = useRoom(player, !loading);
+  const deckLibrary = useDeckLibrary();
   const avatarOptions = usePlayerAvatar(player?.uid);
   const [page, setPage] = useState<Page>('home');
   const [guideIndex, setGuideIndex] = useState(0);
-  const [destination, setDestination] = useState<GameDestination>('play');
+  const [destination, setDestination] = useState<GameDestination>(
+    preview === 'decks' ? 'decks' : preview === 'community' ? 'community' : preview === 'avatar' ? 'settings' : 'play',
+  );
+  const [accountReturn, setAccountReturn] = useState<GameDestination>('settings');
+  const [demo, setDemo] = useState(() => {
+    if (preview !== 'room' && preview !== 'recap') return null;
+    const sample = newDemo('group-chat', 1);
+    sample.code = 'CHAT5';
+    if (preview === 'recap') {
+      const voted = demoAction(sample, { type: 'submit', round: 1, submission: { kind: 'pick', value: 'Maya' } });
+      return demoAction(demoAction(voted, { type: 'reveal' }), { type: 'next' });
+    }
+    sample.phase = 'lobby';
+    sample.rounds = [];
+    return sample;
+  });
+  const [demoAvatar, setDemoAvatar] = useState(0);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [deck, setDeck] = useState(decks[0].id);
+  const [customDeck, setCustomDeck] = useState<CustomDeck>();
   const [mode, setMode] = useState<Mode>('anonymous');
   const [allowSelfVote, setAllowSelfVote] = useState(false);
   const [roundCount, setRoundCount] = useState(10);
@@ -66,10 +97,20 @@ function GameApp() {
   const [signOutBusy, setSignOutBusy] = useState(false);
   const [signOutError, setSignOutError] = useState('');
   const needsSignIn = !player && (page === 'host' || page === 'join');
-  const room = player ? online.room : null;
+  const room = demo ? viewRoom(demo, DEMO_PLAYER) : player ? online.room : null;
   const host = !!room && room.host === room.me;
   const showTabs = !room && !needsSignIn && page === 'home';
-  const pickRounds = getDeck(deck)?.cards.some((card) => card.kind === 'pick');
+  const selectedLocalIndex = deckLibrary.localDeckIds.indexOf(deck);
+  const selectedDeck = (selectedLocalIndex >= 0 ? deckLibrary.localDecks[selectedLocalIndex] : customDeck) ?? getDeck(deck) ?? decks[0];
+  const maxRounds = selectedDeck.cards.length;
+  const pickRounds = selectedDeck.cards.some((card) => card.kind === 'pick');
+
+  useEffect(() => {
+    if (deck.startsWith('local-') && !deckLibrary.localDeckIds.includes(deck)) {
+      setDeck(decks[0].id);
+      setCustomDeck(undefined);
+    }
+  }, [deck, deckLibrary.localDeckIds]);
 
   useEffect(() => {
     function acceptInvite(url: string) {
@@ -90,13 +131,19 @@ function GameApp() {
     setPage(next);
   }
 
+  function returnFromAccount() {
+    setPage('home');
+    setDestination(accountReturn === 'community' ? 'community' : 'play');
+  }
+
   function goHome() {
     if (page === 'account' && !room) {
       setPage('home');
-      setDestination('settings');
+      setDestination(accountReturn);
       return;
     }
-    online.leave();
+    if (demo) setDemo(null);
+    else online.leave();
     navigate('home');
   }
 
@@ -140,8 +187,8 @@ function GameApp() {
               ) : <BrandMark color={colors.cloud} />}
               {room ? (
                 <View className="flex-row items-center gap-2 rounded-full border border-line px-3 py-2">
-                  <View className={`size-1.5 rounded-full ${online.connected ? 'bg-lime-strong' : 'bg-peach-fill'}`} />
-                  <Label className="tracking-[1px]">{online.connected ? `Room ${room.code}` : 'Reconnecting'}</Label>
+                  <View className={`size-1.5 rounded-full ${(demo || online.connected) ? 'bg-lime-strong' : 'bg-peach-fill'}`} />
+                  <Label className="tracking-[1px]">{(demo || online.connected) ? `Room ${room.code}` : 'Reconnecting'}</Label>
                 </View>
               ) : showTabs && destination === 'play' ? (
                 <View className="flex-row items-center gap-1.5 rounded-full border border-line px-3 py-2">
@@ -156,17 +203,46 @@ function GameApp() {
             )}
             {room ? (
               room.phase === 'lobby'
-                ? <Lobby room={room} host={host} disabled={!online.connected || online.pending} start={() => online.send({ type: 'start' })} />
-                : <RoundScreen room={room} host={host} act={online.send} leave={goHome}
-                    disabled={!online.connected || online.pending} />
+                ? <Lobby room={room} host={host} disabled={!demo && (!online.connected || online.pending)} start={() => demo ? setDemo(demoAction(demo, { type: 'start' })) : online.send({ type: 'start' })} />
+                : <RoundScreen room={room} host={host} act={(action) => demo ? setDemo(demoAction(demo, action)) : online.send(action)} leave={goHome}
+                    disabled={!demo && (!online.connected || online.pending)} />
             ) : needsSignIn ? (
               <AccountScreen forPlay onAuthenticated={() => navigate('home')} />
             ) : showTabs && destination === 'decks' ? (
-              <DecksScreen onHost={(deckId) => { setDeck(deckId); navigate('host'); }} />
+              <DecksScreen
+                localDecks={deckLibrary.localDecks}
+                localDeckIds={deckLibrary.localDeckIds}
+                decksLoaded={deckLibrary.loaded}
+                loadError={deckLibrary.loadError}
+                saveDecks={deckLibrary.saveDecks}
+                onHost={(deckId) => {
+                  setDeck(deckId);
+                  const index = deckLibrary.localDeckIds.indexOf(deckId);
+                  const selected = index >= 0 ? deckLibrary.localDecks[index] : getDeck(deckId)!;
+                  setCustomDeck(index >= 0 ? deckLibrary.localDecks[index] : undefined);
+                  setRoundCount((count) => Math.min(count, selected.cards.length));
+                  navigate('host');
+                }}
+              />
+            ) : showTabs && destination === 'community' ? (
+              <View className="gap-4">
+                {!!deckLibrary.loadError && <Body accessibilityRole="alert" className="text-sm text-peach">{deckLibrary.loadError}</Body>}
+                <CommunityScreen
+                  key={user?.uid ?? 'signed-out'}
+                  libraryReady={deckLibrary.loaded}
+                  libraryError={deckLibrary.loadError}
+                  onAdd={deckLibrary.addDeck}
+                  localDecks={deckLibrary.localDecks}
+                  onSignIn={() => { setAccountReturn('community'); navigate('account'); }}
+                />
+              </View>
             ) : showTabs && destination === 'settings' ? (
               <SettingsScreen
                 appearanceSlot={<AppearanceOptions />}
-                avatarSlot={player ? (
+                avatarSlot={preview === 'avatar' ? (
+                  <PlayerAvatarOptions seed="preview-avatar" avatarVariant={demoAvatar} mode="generated" ready hasPhoto={false}
+                    update={async () => {}} useSavedPhoto={async () => {}} selectGeneratedAvatar={async (variant) => setDemoAvatar(variant)} />
+                ) : player ? (
                   <PlayerAvatarOptions
                     key={player.uid}
                     seed={avatarOptions.avatarSeed ?? player.uid}
@@ -200,7 +276,7 @@ function GameApp() {
                         </View>
                       </Tap>
                     ) : (
-                      <Button tone="primary" onPress={() => setPage('account')} disabled={loading}>
+                      <Button tone="primary" onPress={() => { setAccountReturn('settings'); setPage('account'); }} disabled={loading}>
                         {user?.isAnonymous ? 'Save guest account' : configured ? 'Sign in or create account' : 'Account setup'}
                       </Button>
                     )}
@@ -211,7 +287,7 @@ function GameApp() {
                 }
               />
             ) : page === 'account' ? (
-              <AccountScreen onAuthenticated={() => navigate('home')} />
+              <AccountScreen onAuthenticated={returnFromAccount} />
             ) : page === 'guide' ? (
               <HowToPlayScreen slideIndex={guideIndex} />
             ) : page === 'home' ? (
@@ -220,9 +296,15 @@ function GameApp() {
                   <Title className="text-[56px] leading-[1.1]">WHO, ME?</Title>
                   <Body className="mt-2 max-w-[300px] text-muted">Pick the friend who fits the prompt, then let the group explain itself.</Body>
                 </View>
-                <PromptDeckStack selectedDeckId={deck} onSelect={setDeck} />
+                <PromptDeckStack selectedDeckId={deck} localDecks={deckLibrary.localDecks} localDeckIds={deckLibrary.localDeckIds} onSelect={(selected) => {
+                  setDeck(selected);
+                  const index = deckLibrary.localDeckIds.indexOf(selected);
+                  const next = index >= 0 ? deckLibrary.localDecks[index] : getDeck(selected);
+                  setCustomDeck(index >= 0 ? deckLibrary.localDecks[index] : undefined);
+                  if (next) setRoundCount((count) => Math.min(count, next.cards.length));
+                }} />
                 <View className="gap-2.5 pt-6">
-                  <Button className="border border-ink" onPress={() => navigate('host')}>Host a game</Button>
+                  <Button className="border border-ink" onPress={() => { setCustomDeck(selectedLocalIndex >= 0 ? deckLibrary.localDecks[selectedLocalIndex] : undefined); setRoundCount((count) => Math.min(count, selectedDeck.cards.length)); navigate('host'); }}>Host a game</Button>
                   <Button tone="secondary" onPress={() => navigate('join')} arrow={false}>Join with a code</Button>
                   <Tap label="How to play" onPress={() => { setGuideIndex(0); navigate('guide'); }} className="min-h-12 rounded-full">
                     <Text className="text-center font-boldface text-sm text-lilac-strong">How to play</Text>
@@ -233,7 +315,7 @@ function GameApp() {
               <View className="gap-6">
                 <View>
                   <Title>{page === 'host' ? 'Host a game' : 'Join a game'}</Title>
-                  <Body className="mt-2 text-muted">{page === 'host' ? 'Set the round count and what everyone sees at the reveal.' : 'Ask your host for the five-character room code.'}</Body>
+                  <Body className="mt-2 text-muted">{page === 'host' ? `Playing ${selectedDeck.name}. Set the rounds and what everyone sees at the reveal.` : 'Ask your host for the five-character room code.'}</Body>
                 </View>
                 {page === 'join' && (
                   <Field label="Room code" className="tracking-[4px]" value={code}
@@ -278,15 +360,14 @@ function GameApp() {
                           </View>
                           <Tap
                             label="More rounds"
-                            disabled={roundCount >= (getDeck(deck)?.cards.length ?? 1)}
-                            onPress={() => setRoundCount((count) => Math.min(getDeck(deck)?.cards.length ?? count, count + 1))}
+                            disabled={roundCount >= maxRounds}
+                            onPress={() => setRoundCount((count) => Math.min(maxRounds, count + 1))}
                             className="size-11 rounded-full border border-line bg-canvas"
                           >
                             <Text className="text-center font-boldface text-2xl text-cloud">+</Text>
                           </Tap>
                         </View>
                       </View>
-                      <Label>Choose 1–{getDeck(deck)?.cards.length ?? 0} rounds</Label>
                     </Surface>
                     {pickRounds && (
                       <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
@@ -306,7 +387,7 @@ function GameApp() {
                 {!online.available && <Body className="text-muted">This build has no room server, so online rooms are unavailable.</Body>}
                 <Button disabled={!online.ready || !avatarOptions.ready || !name.trim() || online.pending || (page === 'join' && code.length !== 5)}
                   onPress={() => online.send(page === 'host'
-                    ? { type: 'create', name, deckId: deck, mode, allowSelfVote, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, roundCount }
+                    ? { type: 'create', name, deckId: customDeck ? CUSTOM_DECK_ID : deck, customDeck, mode, allowSelfVote, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, roundCount }
                     : { type: 'join', name, code, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant })}>
                   {online.pending ? 'Connecting…' : page === 'host' ? 'Create room' : 'Join room'}
                 </Button>
@@ -367,7 +448,10 @@ function AppearanceOptions() {
 
 function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean; disabled: boolean; start: () => void }) {
   const { colors } = useAppearance();
-  const deck = getDeck(room.deckId)!;
+  const deck = room.customDeck ?? getDeck(room.deckId)!;
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   const [feedback, setFeedback] = useState('');
   const onlineCount = room.players.filter((player) => player.online !== false).length;
   const link = webOrigin() ? `${webOrigin()}/?room=${room.code}` : `blamegame://join?room=${room.code}`;
@@ -378,6 +462,9 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
       if (copy) {
         if (!await Clipboard.setStringAsync(room.code)) throw new Error('Copy unavailable');
         setFeedback('Room code copied.');
+        setCopied(true);
+        clearTimeout(copiedTimer.current);
+        copiedTimer.current = setTimeout(() => setCopied(false), 1700);
       } else if (Platform.OS !== 'web') {
         await Share.share({ message });
       } else if (typeof navigator.share === 'function') {
@@ -394,17 +481,20 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
 
   return (
     <View className="gap-6">
-      <View>
-        <Label className="mb-2 text-lilac-strong">{deck.name} · {room.mode} · {room.total} rounds</Label>
-        <Title>The lobby</Title>
-        <Body className="mt-2 text-muted">Send your friends the code or invite link.</Body>
+      <View className="flex-row items-start gap-3">
+        <View className="flex-1">
+          <Label className="mb-2 text-lilac-strong">{deck.name} · {room.mode} · {room.total} {room.total === 1 ? 'round' : 'rounds'}</Label>
+          <Title>The lobby</Title>
+          <Body className="mt-2 text-muted">Send your friends the code or invite link.</Body>
+        </View>
+        {room.customDeck && <Image source={getDeckArt(room.customDeck.cover)} resizeMode="contain" accessible={false} style={{ width: 64, height: 64 }} />}
       </View>
       <Surface className="gap-3 rounded-[24px] bg-lilac p-5">
         <Label className="text-ink">Room code</Label>
         <View className="flex-row items-center justify-between gap-2">
           <Text selectable className="shrink font-code text-[52px] leading-[1.1] tracking-[4px] text-ink">{room.code}</Text>
-          <Tap label="Copy room code" onPress={() => void invite(true)} className="w-12 bg-ink">
-            <View className="items-center"><HugeiconsIcon icon={Copy01Icon} size={22} color={colors.lilac} /></View>
+          <Tap label={copied ? "Room code copied. Copy again" : "Copy room code"} onPress={() => void invite(true)} className="w-12 bg-ink">
+            <CopyCodeIcon copied={copied} color={colors.lilac} />
           </Tap>
         </View>
         <Tap onPress={() => void invite(false)}>
@@ -432,6 +522,30 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
           {onlineCount < MIN_PLAYERS && <Body className="text-center text-sm text-muted">You need at least 3 players online to start.</Body>}
         </View>
       ) : <Body className="text-center text-muted">Waiting for the host to start.</Body>}
+    </View>
+  );
+}
+
+function CopyCodeIcon({ copied, color }: { copied: boolean; color: string }) {
+  const motion = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotionPreference();
+  useEffect(() => {
+    if (reducedMotion) {
+      motion.setValue(copied ? 1 : 0);
+      return;
+    }
+    const animation = Animated.timing(motion, { toValue: copied ? 1 : 0, duration: 180, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [copied, motion, reducedMotion]);
+  return (
+    <View style={{ width: 22, height: 22, alignSelf: 'center' }} aria-hidden>
+      <Animated.View style={{ position: 'absolute', opacity: motion.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }}>
+        <HugeiconsIcon icon={Copy01Icon} size={22} color={color} />
+      </Animated.View>
+      <Animated.View style={{ position: 'absolute', opacity: motion, transform: [{ scale: motion.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] }) }] }}>
+        <Check size={22} color={color} strokeWidth={2.5} />
+      </Animated.View>
     </View>
   );
 }

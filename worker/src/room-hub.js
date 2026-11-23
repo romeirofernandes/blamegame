@@ -1,4 +1,5 @@
 import { addPlayer, applyAction, createRoom, LEGACY_ROUND_COUNT, MIN_PLAYERS, MIN_ROUNDS, viewRoom } from '../../src/game.ts';
+import { CUSTOM_DECK_ID, parseCustomDeck } from '../../src/customDeck.ts';
 import { getDeck } from '../../src/decks.ts';
 import { MAX_PLAYER_AVATAR_LENGTH } from '../../src/avatar.ts';
 import { verifyFirebaseIdToken } from './firebase-auth.js';
@@ -168,7 +169,8 @@ export class GameRoom {
         try { socket.close(1013, 'Room code collision'); } catch {}
         return;
       }
-      const deck = getDeck(command.deckId);
+      const customDeck = command.deckId === CUSTOM_DECK_ID ? parseCustomDeck(command.customDeck) : null;
+      const deck = customDeck ?? getDeck(command.deckId);
       const roundCount = command.roundCount ?? LEGACY_ROUND_COUNT;
       if (typeof command.name !== 'string' || !deck ||
         (command.mode !== 'anonymous' && command.mode !== 'named') ||
@@ -179,7 +181,7 @@ export class GameRoom {
       const id = crypto.randomUUID();
       const room = createRoom(code, id, command.name, command.deckId, command.mode,
         command.allowSelfVote ?? false, command.avatar, command.avatarVariant, command.avatarSeed,
-        command.roundCount == null ? undefined : roundCount);
+        command.roundCount == null ? undefined : roundCount, Math.random, customDeck ?? undefined);
       this.session = { room, tokens: new Map([[command.token, { playerId: id, authUid }]]), touched: Date.now() };
       this.attach(socket, id, authUid);
       await this.persistAndSchedule();

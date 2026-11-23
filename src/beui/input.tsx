@@ -23,6 +23,7 @@ const INPUT_CLASSES =
 export function Field({
   label,
   trailing,
+  multiline,
   className = '',
   accessibilityLabel,
   keyboardAppearance,
@@ -73,6 +74,7 @@ export function Field({
             if (typeof ref === 'function') ref(node);
             else if (ref) ref.current = node;
           }}
+          multiline={multiline}
           accessibilityLabel={accessibilityLabel ?? label}
           keyboardAppearance={keyboardAppearance ?? theme}
           placeholderTextColor={placeholderTextColor ?? colors.muted}
@@ -85,7 +87,7 @@ export function Field({
               paddingVertical: 12,
               paddingRight: trailing ? 56 : 16,
               includeFontPadding: false,
-              textAlignVertical: 'center',
+              textAlignVertical: multiline ? 'top' : 'center',
             },
             style,
           ]}

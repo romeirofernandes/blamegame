@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import CheckmarkCircle02Icon from '@hugeicons/core-free-icons/CheckmarkCircle02Icon';
+import { Check } from 'lucide-react-native';
 import EyeIcon from '@hugeicons/core-free-icons/EyeIcon';
 import LockKeyIcon from '@hugeicons/core-free-icons/LockKeyIcon';
-import PartyIcon from '@hugeicons/core-free-icons/PartyIcon';
+import { RecapCard } from './RecapCard';
 import { getDeck } from './decks';
 import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
@@ -22,9 +22,10 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
   const [choice, setChoice] = useState('');
   const [answer, setAnswer] = useState('');
   const [committing, setCommitting] = useState(false);
-  const deck = getDeck(room.deckId)!;
+  const deck = room.customDeck ?? getDeck(room.deckId)!;
+  const recapDeck = room.customDeck ? getDeck(room.customDeck.cover) : getDeck(room.deckId);
+  const recapColor = recapDeck && 'color' in recapDeck ? recapDeck.color : '#c8adff';
   const card = room.card!;
-  const player = (id: string) => room.players.find((person) => person.id === id)!;
   const offlineCount = room.players.filter((person) => person.online === false).length;
 
   useEffect(() => {
@@ -43,17 +44,10 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
   if (room.phase === 'recap') {
     return (
       <View className="gap-6">
+        <Title>Game recap</Title>
         <View className="gap-2">
-          <HugeiconsIcon icon={PartyIcon} color={colors.limeStrong} size={38} strokeWidth={1.8} />
-          <Title>Case closed.</Title>
-          <Body className="text-muted">{room.total} rounds of {deck.name} in the books.</Body>
-        </View>
-        <View className="gap-2">
-          {room.recap?.map((item) => (
-            <Surface key={item.question} className="gap-1 p-4">
-              <Body>{item.question}</Body>
-              {item.leaders.length > 0 && <Label className="tracking-[1px] text-lilac-strong">{item.leaders.map((id) => player(id).name).join(' & ')}</Label>}
-            </Surface>
+          {room.recap?.map((item, index) => (
+            <RecapCard key={index} room={room} item={item} index={index} deckName={deck.name} color={recapColor} />
           ))}
         </View>
         <Button onPress={leave}>Back to home</Button>
@@ -78,7 +72,7 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
         </View>
       </View>
 
-      <PromptCard question={card.question} color={deck.color} label={card.kind === 'pick' ? 'Most likely to' : 'Spotlight round'} />
+      <PromptCard question={card.question} color={'color' in deck ? deck.color : undefined} label={card.kind === 'pick' ? 'Most likely to' : 'Spotlight round'} />
 
       {room.phase === 'reveal' ? (
         <View className="shrink-0 gap-5">
@@ -91,7 +85,7 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
         <View className="gap-4">
           {room.hasSubmitted ? (
             <Surface className="gap-2 p-5">
-              <HugeiconsIcon icon={CheckmarkCircle02Icon} size={28} color={colors.limeStrong} strokeWidth={2} />
+              <Check size={28} color={colors.limeStrong} strokeWidth={2} />
               <Title className="text-[34px] leading-[36px]" accessibilityLiveRegion="polite">Locked in.</Title>
               <Body className="text-muted">Answers stay sealed until the reveal.</Body>
             </Surface>
@@ -108,7 +102,7 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
                           <Body>{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
                           {person.online === false && <Label className="text-peach">Offline</Label>}
                         </View>
-                        {choice === person.id && <HugeiconsIcon icon={CheckmarkCircle02Icon} size={22} color={colors.limeStrong} />}
+                        {choice === person.id && <Check size={22} color={colors.limeStrong} />}
                       </View>
                     </Tap>
                   ))}

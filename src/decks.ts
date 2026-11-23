@@ -357,10 +357,14 @@ export function cycleDeckIndex(index: number, offset: number, count: number) {
 export function drawCards(deckId: string, count: number, random: () => number = Math.random): Card[] {
   const deck = getDeck(deckId);
   if (!deck) throw new Error('Choose a deck.');
-  if (!Number.isInteger(count) || count < 1 || count > deck.cards.length) {
-    throw new Error(`Choose between 1 and ${deck.cards.length} rounds.`);
+  return sampleCards(deck.cards, count, random);
+}
+
+export function sampleCards(source: Card[], count: number, random: () => number): Card[] {
+  if (!Number.isInteger(count) || count < 1 || count > source.length) {
+    throw new Error(`Choose between 1 and ${source.length} rounds.`);
   }
-  const cards = [...deck.cards];
+  const cards = [...source];
   for (let index = cards.length - 1; index > 0; index--) {
     const other = Math.floor(random() * (index + 1));
     [cards[index], cards[other]] = [cards[other], cards[index]];

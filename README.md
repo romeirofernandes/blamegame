@@ -6,9 +6,11 @@ a party game for 3–12 friends. pick a deck, vote for who fits the prompt, and 
 
 ## get the app
 
-[Download the Android APK](https://github.com/romeirofernandes/blamegame/releases/download/v1.0.3/blame-game.apk) for Android 7 or newer on a 64-bit device. Get its [SHA-256 checksum](https://github.com/romeirofernandes/blamegame/releases/download/v1.0.3/blame-game.apk.sha256) or read the [release notes](https://github.com/romeirofernandes/blamegame/releases/tag/v1.0.3) for Google sign-in setup.
+[Download the Android APK](https://github.com/romeirofernandes/blamegame/releases/download/v1.0.4/blame-game.apk) for Android 7 or newer on a 64-bit device. Get its [SHA-256 checksum](https://github.com/romeirofernandes/blamegame/releases/download/v1.0.4/blame-game.apk.sha256) or read the [release notes](https://github.com/romeirofernandes/blamegame/releases/tag/v1.0.4) for Google sign-in setup.
 
 play in your browser at [blame-game.theromeirofernandes.workers.dev](https://blame-game.theromeirofernandes.workers.dev). host a game and send the room code or invite link to your friends.
+
+write your own prompts in Decks or save something from Community. both show up in the Play stack. after the game, share a result card for any round.
 
 ## run locally
 
