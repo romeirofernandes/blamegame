@@ -19,8 +19,8 @@ export type GameDestination = "play" | "decks" | "community" | "settings";
 const destinations = [
   { id: "play", label: "Play", icon: PlayIcon },
   { id: "decks", label: "Decks", icon: Cards01Icon },
-  { id: "settings", label: "Settings", icon: Settings01Icon },
   { id: "community", label: "Community", icon: UserGroupIcon },
+  { id: "settings", label: "Settings", icon: Settings01Icon },
 ] as const satisfies {
   id: GameDestination;
   label: string;
