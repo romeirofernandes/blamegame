@@ -100,7 +100,7 @@ export function Field({
             onBlur?.(event);
           }}
         />
-        {trailing && <View className="absolute bottom-0 right-1 top-0 justify-center">{trailing}</View>}
+        {trailing && <View className="absolute bottom-0 right-0 top-0 w-14 items-center justify-center">{trailing}</View>}
       </View>
     </View>
   );
