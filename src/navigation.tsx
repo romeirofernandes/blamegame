@@ -39,9 +39,9 @@ export function GameTabBar({
         values={destinationIds}
         onValueChange={(value) => {
           if (value === active || !destinationIds.includes(value as GameDestination)) return;
+          onChange(value as GameDestination);
           play("tap");
           hapticSelect();
-          onChange(value as GameDestination);
         }}
         className="mx-auto w-full max-w-[480px] px-4 py-1"
       >

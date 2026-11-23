@@ -125,7 +125,7 @@ export function GameSwitch({
               start: SIZE.padding,
               height: SIZE.thumb,
               borderRadius: SIZE.thumb / 2,
-              backgroundColor: value && theme === 'dark' ? colors.ink : '#fff',
+              backgroundColor: '#fff',
             },
             thumbStyle,
           ]}

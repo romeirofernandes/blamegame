@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Appearance, Platform, useColorScheme, View } from 'react-native';
 import Svg, { Defs, G, Path, Pattern, Rect } from 'react-native-svg';
 import { VariableContextProvider } from 'nativewind';
@@ -94,6 +94,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<AppearancePreference>(readWebPreference);
   const [storageReady, setStorageReady] = useState(Platform.OS === 'web');
+  const changed = useRef(false);
   const theme: AppearanceTheme = preference === 'system' ? (systemScheme ?? 'light') : preference;
   const colors = palettes[theme];
 
@@ -103,7 +104,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     let active = true;
     void AsyncStorage.getItem(APPEARANCE_STORAGE_KEY)
       .then((stored) => {
-        if (active && isPreference(stored)) setPreferenceState(stored);
+        if (active && !changed.current && isPreference(stored)) setPreferenceState(stored);
       })
       .catch(() => {})
       .finally(() => {
@@ -128,11 +129,12 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.canvas);
     for (const [name, value] of Object.entries(colors)) {
       const token = name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      root.style.setProperty(`--color-${token}`, value);
+      root.style.setProperty(`--appearance-${token}`, value);
     }
   }, [colors, preference, theme]);
 
   const setPreference = useCallback((next: AppearancePreference) => {
+    changed.current = true;
     setPreferenceState(next);
     void AsyncStorage.setItem(APPEARANCE_STORAGE_KEY, next).catch(() => {});
   }, []);
@@ -140,7 +142,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const variables = useMemo(
     () => Object.fromEntries(Object.entries(colors).map(([name, value]) => {
       const token = name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-      return [`--color-${token}`, value];
+      return [`--appearance-${token}`, value];
     })) as Record<`--${string}`, string>,
     [colors],
   );

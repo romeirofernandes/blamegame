@@ -124,7 +124,7 @@ function GameApp() {
           <DoodleWallpaper />
           <ScrollView
             ref={scrollRef}
-            key={room ? `${room.code}:${room.phase}:${room.round}` : `${destination}:${page}`}
+            key={room ? `${room.code}:${room.phase}:${room.round}` : page}
             keyboardShouldPersistTaps="handled"
             className="flex-1"
             showsVerticalScrollIndicator={false}
@@ -323,7 +323,15 @@ function GameApp() {
               onDone={() => navigate('home')}
             />
           )}
-          {showTabs && <GameTabBar active={destination} onChange={setDestination} />}
+          {showTabs && (
+            <GameTabBar
+              active={destination}
+              onChange={(next) => {
+                scrollRef.current?.scrollTo({ y: 0, animated: false });
+                setDestination(next);
+              }}
+            />
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

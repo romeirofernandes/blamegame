@@ -3,23 +3,23 @@
 @import "tailwindcss/utilities.css";
 @import "nativewind/theme";
 
-@theme {
-  --color-ink: #15131d;
-  --color-canvas: #f5f1f8;
-  --color-panel: #ffffff;
-  --color-line: #93879f;
-  --color-cloud: #211b29;
-  --color-muted: #625a69;
-  --color-lilac: #e7dcf5;
-  --color-lilac-strong: #684b96;
-  --color-lime: #e2fc67;
-  --color-lime-strong: #536312;
-  --color-peach: #9b4934;
-  --color-peach-fill: #ffb199;
-  --color-prompt-stack: #eee7f7;
-  --color-prompt-stack-accent: #c8adff;
-  --color-prompt-border: #8675af;
-  --color-doodle: #6d5494;
+@theme inline {
+  --color-ink: var(--appearance-ink);
+  --color-canvas: var(--appearance-canvas);
+  --color-panel: var(--appearance-panel);
+  --color-line: var(--appearance-line);
+  --color-cloud: var(--appearance-cloud);
+  --color-muted: var(--appearance-muted);
+  --color-lilac: var(--appearance-lilac);
+  --color-lilac-strong: var(--appearance-lilac-strong);
+  --color-lime: var(--appearance-lime);
+  --color-lime-strong: var(--appearance-lime-strong);
+  --color-peach: var(--appearance-peach);
+  --color-peach-fill: var(--appearance-peach-fill);
+  --color-prompt-stack: var(--appearance-prompt-stack);
+  --color-prompt-stack-accent: var(--appearance-prompt-stack-accent);
+  --color-prompt-border: var(--appearance-prompt-border);
+  --color-doodle: var(--appearance-doodle);
   --font-display: GeistPixelSquare;
   --font-code: SpaceGrotesk_700Bold;
   --font-body: DMSans_500Medium;
