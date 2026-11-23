@@ -52,7 +52,7 @@ export type ButtonProps = Omit<TapProps, 'children' | 'className'> & {
 
 export function Button({ children, onPress, tone = 'primary', disabled, arrow = true, className = '', label, ...props }: ButtonProps) {
   const { colors: palette } = useAppearance();
-  const background = tone === 'primary' ? 'bg-lime' : tone === 'secondary' ? 'border border-line bg-panel' : '';
+  const background = tone === 'primary' ? 'bg-lime' : 'border border-line bg-panel';
   const color = tone === 'primary' ? palette.ink : tone === 'secondary' ? palette.cloud : palette.muted;
   const textChild = typeof children === 'string' || typeof children === 'number';
   return (
