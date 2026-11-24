@@ -37,6 +37,7 @@ import { SoundEffectsProvider, useSoundEffects } from './soundEffects';
 import { HowToPlayControls, HowToPlayScreen, howToPlaySlideCount } from './HowToPlayScreen';
 import { CommunityScreen } from './CommunityScreen';
 import { useDeckLibrary } from './useDeckLibrary';
+import { UpdatePrompt } from './UpdatePrompt';
 
 // Interactive fixtures for checking room-only screens in the local web preview.
 const preview = __DEV__ && Platform.OS === 'web' && typeof location !== 'undefined'
@@ -166,6 +167,7 @@ function GameApp() {
       style={{ flex: 1 }}
     >
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      <UpdatePrompt />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <View className="mx-auto w-full max-w-[480px] flex-1 bg-canvas web:border-x web:border-line/50">
           <DoodleWallpaper />
