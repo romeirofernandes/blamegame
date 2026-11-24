@@ -4,13 +4,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { getRandomValues } from 'expo-crypto';
 import type { Command, Message, RoomView } from './game';
+import { getDeck } from './decks';
 
 type Enter = Extract<Command, { type: 'create' | 'join' | 'resume' }>;
 type Outbound = Exclude<Command, Enter>
   | Omit<Extract<Enter, { type: 'create' }>, 'token'>
   | Omit<Extract<Enter, { type: 'join' }>, 'token'>;
 type Account = { uid: string; getIdToken: () => Promise<string> };
-type Identity = { token: string; code?: string };
+type Identity = {
+  token: string;
+  code?: string;
+  title?: string;
+  phase?: RoomView['phase'];
+  round?: number;
+  total?: number;
+  updatedAt?: number;
+  detached?: boolean;
+};
+export type RejoinableGame = Pick<Identity, 'code' | 'title' | 'phase' | 'round' | 'total'> & { code: string };
 
 const storage = Platform.OS === 'web' ? {
   async getItem(key: string) { return sessionStorage.getItem(key); },
@@ -35,8 +46,13 @@ export function webOrigin() {
 }
 
 export function useRoom(account: Account | null, authReady: boolean) {
-  const controller = useRef<{ send: (command: Outbound) => void; leave: () => void }>(null);
+  const controller = useRef<{
+    send: (command: Outbound) => void;
+    rejoin: (code: string) => void;
+    leave: () => void;
+  }>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
+  const [rejoinableGames, setRejoinableGames] = useState<RejoinableGame[]>([]);
   const [connected, setConnected] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -47,19 +63,39 @@ export function useRoom(account: Account | null, authReady: boolean) {
 
   useEffect(() => {
     setRoom(null);
+    setRejoinableGames([]);
     setError('');
     setPending(false);
     setConnected(false);
     setReadyUid(undefined);
     if (!origin || !authReady || !uid) return;
 
-    const storageKey = `blame-game-session:${uid}`;
+    const storageKey = `blame-game-sessions:${uid}`;
+    const legacyStorageKey = `blame-game-session:${uid}`;
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let handshakeTimeout: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
     let identity: Identity | undefined;
+    let identities: Identity[] = [];
+    let currentRoom: RoomView | null = null;
     let socket: WebSocket | null = null;
+
+    function publishIdentities() {
+      const available = identities
+        .filter((saved): saved is Identity & { code: string } => Boolean(saved.code) && saved.phase !== 'recap')
+        .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      setRejoinableGames(available.map(({ code, title, phase, round, total }) => ({ code, title, phase, round, total })));
+      const stored = identities.filter((saved) => saved.code && saved.phase !== 'recap');
+      const save = stored.length ? storage.setItem(storageKey, JSON.stringify(stored)) : storage.removeItem(storageKey);
+      void save.then(() => storage.removeItem(legacyStorageKey)).catch(() => {});
+    }
+
+    function forgetIdentity(saved: Identity | undefined) {
+      if (!saved?.code) return;
+      identities = identities.filter((entry) => entry.code !== saved.code);
+      publishIdentities();
+    }
 
     function disconnect() {
       clearTimeout(retry);
@@ -70,8 +106,9 @@ export function useRoom(account: Account | null, authReady: boolean) {
     }
 
     function clearRoom() {
+      forgetIdentity(identity);
       if (identity) delete identity.code;
-      void storage.removeItem(storageKey).catch(() => {});
+      currentRoom = null;
       setConnected(false);
       setPending(false);
       setRoom(null);
@@ -102,7 +139,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
           setError('Could not verify your sign-in. Check your connection and try again.');
           setConnected(false);
           setPending(false);
-          if (identity?.code) peer.close();
+          if (currentRoom) peer.close();
           else disconnect();
         }
       };
@@ -124,12 +161,23 @@ export function useRoom(account: Account | null, authReady: boolean) {
           attempts = 0;
           clearTimeout(handshakeTimeout);
           const saved = identity!;
-          if (saved.code !== message.room.code) {
-            saved.code = message.room.code;
-            void storage.setItem(storageKey, JSON.stringify(saved)).catch(() => {});
+          const { code, phase, round, total } = message.room;
+          if (saved.detached || saved.code !== code || saved.phase !== phase || saved.round !== round ||
+              saved.total !== total || !saved.title) {
+            saved.code = code;
+            saved.title = message.room.customDeck?.name ?? getDeck(message.room.deckId)?.name ?? message.room.deckId;
+            saved.phase = phase;
+            saved.round = round;
+            saved.total = total;
+            saved.updatedAt = Date.now();
+            delete saved.detached;
+            identities = identities.filter((entry) => entry.code !== code);
+            if (phase !== 'recap') identities.unshift(saved);
+            publishIdentities();
           }
           setConnected(true);
           setError('');
+          currentRoom = message.room;
           setRoom(message.room);
         } else {
           setError(message.message);
@@ -145,7 +193,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
         clearTimeout(handshakeTimeout);
         setConnected(false);
         setPending(false);
-        if (identity?.code) {
+        if (currentRoom && identity?.code) {
           const { code, token } = identity;
           retry = setTimeout(() => open({ type: 'resume', code, token }), Math.min(500 * 2 ** attempts++, 5000));
         } else {
@@ -161,6 +209,10 @@ export function useRoom(account: Account | null, authReady: boolean) {
           return;
         }
         if (command.type === 'create' || command.type === 'join') {
+          const existing = command.type === 'join'
+            ? identities.find((saved) => saved.code === command.code.trim().toUpperCase())
+            : undefined;
+          identity = existing ?? { token: newToken() };
           setError('');
           setPending(true);
           open({ ...command, token: identity.token });
@@ -174,17 +226,55 @@ export function useRoom(account: Account | null, authReady: boolean) {
         setPending(true);
         socket.send(JSON.stringify(command));
       },
+      rejoin(code) {
+        const saved = identities.find((entry) => entry.code === code);
+        if (!saved) {
+          setError('That saved game is no longer available.');
+          return;
+        }
+        identity = saved;
+        setError('');
+        setPending(true);
+        open({ type: 'resume', code, token: saved.token });
+      },
       leave() {
         if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'leave' }));
-        clearRoom();
+        if (currentRoom && currentRoom.phase !== 'lobby' && currentRoom.phase !== 'recap') {
+          if (identity) identity.detached = true;
+          publishIdentities();
+          setConnected(false);
+          setPending(false);
+          setRoom(null);
+          currentRoom = null;
+          disconnect();
+        } else {
+          clearRoom();
+        }
         setError('');
       },
     };
 
-    void storage.getItem(storageKey).then((value) => {
-      if (stopped || !value) return;
-      const saved = JSON.parse(value) as Identity;
-      if (typeof saved?.token === 'string') identity = saved;
+    void Promise.all([storage.getItem(storageKey), storage.getItem(legacyStorageKey)]).then(([value, legacy]) => {
+      if (stopped) return;
+      try {
+        const parsed = value ? JSON.parse(value) : null;
+        if (Array.isArray(parsed)) {
+          identities = parsed.filter((saved): saved is Identity => saved && typeof saved.token === 'string' &&
+            typeof saved.code === 'string' && /^[A-HJ-NP-Z2-9]{5}$/i.test(saved.code));
+        }
+      } catch {}
+      try {
+        const parsed = legacy ? JSON.parse(legacy) : null;
+        if (parsed && typeof parsed.token === 'string' && typeof parsed.code === 'string' &&
+          /^[A-HJ-NP-Z2-9]{5}$/i.test(parsed.code) && !identities.some((saved) => saved.code === parsed.code)) {
+          identities.push(parsed as Identity);
+        }
+      } catch {}
+      identities = identities.filter((saved, index, all) => all.findIndex((entry) => entry.code === saved.code) === index);
+      identities = identities.filter((saved) => saved.phase !== 'recap');
+      identities.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      identity = identities.find((saved) => !saved.detached);
+      publishIdentities();
     }).catch(() => {}).finally(() => {
       if (stopped) return;
       identity ??= { token: newToken() };
@@ -201,6 +291,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
 
   return {
     room,
+    rejoinableGames,
     available: Boolean(origin),
     ready: authReady && Boolean(uid && uid === readyUid),
     connected,
@@ -210,6 +301,7 @@ export function useRoom(account: Account | null, authReady: boolean) {
       if (controller.current) controller.current.send(command);
       else setError('Could not reach the game server. Try again in a moment.');
     },
+    rejoin: (code: string) => controller.current?.rejoin(code),
     leave: () => controller.current?.leave(),
     clearError: () => setError(''),
   };

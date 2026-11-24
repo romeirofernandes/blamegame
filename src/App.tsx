@@ -114,6 +114,10 @@ function GameApp() {
   }, [deck, deckLibrary.localDeckIds]);
 
   useEffect(() => {
+    if (page === 'join' && room) setCode('');
+  }, [page, room]);
+
+  useEffect(() => {
     function acceptInvite(url: string) {
       const code = Linking.parse(url).queryParams?.room;
       if (typeof code !== 'string' || !/^[a-hj-np-z2-9]{5}$/i.test(code)) return;
@@ -128,6 +132,7 @@ function GameApp() {
 
   function navigate(next: Page) {
     online.clearError();
+    if (next === 'join') setCode('');
     setDestination('play');
     setPage(next);
   }
@@ -319,6 +324,32 @@ function GameApp() {
                   <Title>{page === 'host' ? 'Host a game' : 'Join a game'}</Title>
                   <Body className="mt-2 text-muted">{page === 'host' ? `Playing ${selectedDeck.name}. Set the rounds and what everyone sees at the reveal.` : 'Ask your host for the five-character room code.'}</Body>
                 </View>
+                {page === 'join' && online.rejoinableGames.length > 0 && (
+                  <View className="gap-3">
+                    <Label className="text-lilac-strong">Rejoin a game</Label>
+                    {online.rejoinableGames.map((game) => {
+                      const progress = game.phase === 'lobby'
+                        ? 'Lobby'
+                        : game.round && game.total ? `Round ${game.round} of ${game.total}` : 'Saved game';
+                      return (
+                        <Tap
+                          key={game.code}
+                          label={`Rejoin ${game.title || `room ${game.code}`}, ${progress}`}
+                          disabled={!online.ready || online.pending}
+                          onPress={() => online.rejoin(game.code)}
+                        >
+                          <Surface className="w-full flex-row items-center justify-between gap-3 rounded-[18px] border border-line bg-panel px-4 py-3">
+                            <View className="flex-1 gap-1">
+                              <Text className="font-boldface text-base text-cloud">{game.title || `Room ${game.code}`}</Text>
+                              <Body className="text-sm text-muted">{game.code} · {progress}</Body>
+                            </View>
+                            <Text className="font-boldface text-sm text-lilac-strong">Rejoin</Text>
+                          </Surface>
+                        </Tap>
+                      );
+                    })}
+                  </View>
+                )}
                 {page === 'join' && (
                   <Field label="Room code" className="tracking-[4px]" value={code}
                     onChangeText={(value) => setCode(value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, ''))}
