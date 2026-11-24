@@ -1,7 +1,15 @@
 // Adapted from beUI Native Input (MIT).
 // Source: https://github.com/starc007/beui-native/tree/main/src/components/input
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, type TextInputInstance, type TextInputProps, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputInstance,
+  type TextInputProps,
+  View,
+} from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { twMerge } from 'tailwind-merge';
 import { useAppearance } from '../appearance';
@@ -18,8 +26,9 @@ export type FieldProps = TextInputProps & {
 };
 
 const INPUT_CLASSES =
-  'min-h-14 rounded-[16px] border border-line bg-panel px-4 py-3 font-body text-base text-cloud web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong';
+  'min-h-14 rounded-[16px] border border-line bg-panel px-4 py-3 font-body text-cloud web:focus-visible:outline-2 web:focus-visible:outline-lilac-strong';
 
+// Use `<Field multiline>` for answer areas; alignment and themed keyboard behavior are handled here.
 export function Field({
   label,
   trailing,
@@ -28,6 +37,8 @@ export function Field({
   accessibilityLabel,
   keyboardAppearance,
   placeholderTextColor,
+  selectionColor,
+  cursorColor,
   onFocus,
   onBlur,
   style,
@@ -78,11 +89,14 @@ export function Field({
           accessibilityLabel={accessibilityLabel ?? label}
           keyboardAppearance={keyboardAppearance ?? theme}
           placeholderTextColor={placeholderTextColor ?? colors.muted}
+          selectionColor={selectionColor ?? colors.lilacStrong}
+          cursorColor={cursorColor ?? (Platform.OS === 'android' ? colors.lilacStrong : undefined)}
           className={twMerge(INPUT_CLASSES, className)}
           style={[
             borderStyle,
             {
-              minHeight: 56,
+              minHeight: multiline ? 112 : 56,
+              fontSize: 16,
               paddingHorizontal: 16,
               paddingVertical: 12,
               paddingRight: trailing ? 56 : 16,
