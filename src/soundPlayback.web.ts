@@ -16,7 +16,7 @@ export function useSoundPlayback() {
   const play = useCallback((cue: Cue) => {
     if (typeof AudioContext === 'undefined') return;
     const id = ++request.current;
-    void playSound(aeroPack[`interaction.${cue}`], { volume: 0.35 }).then((playback) => {
+    void playSound(aeroPack[`interaction.${cue}`], { volume: 1 }).then((playback) => {
       if (request.current === id) active.current = playback;
       else playback.stop();
     }).catch(() => {});
