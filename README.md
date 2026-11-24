@@ -2,7 +2,14 @@
 
 a party game for 3–12 friends. pick a deck, vote for who fits the prompt, and let the host reveal where everyone landed. Spotlight is for written answers.
 
-<img src="docs/screenshots/play.png" alt="Play screen with the Group Chat deck" width="260"> <img src="docs/screenshots/decks.png" alt="Deck list with sample prompts" width="260">
+<p>
+  <img src="docs/screenshots/play-dark.png" alt="Play screen in dark mode" width="260">
+  <img src="docs/screenshots/play-light.png" alt="Play screen in light mode" width="260">
+</p>
+<p>
+  <img src="docs/screenshots/decks-dark.png" alt="Decks screen in dark mode" width="260">
+  <img src="docs/screenshots/decks-light.png" alt="Decks screen in light mode" width="260">
+</p>
 
 ## get the app
 
