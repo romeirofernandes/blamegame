@@ -13,9 +13,9 @@
   --color-lilac: var(--appearance-lilac);
   --color-lilac-strong: var(--appearance-lilac-strong);
   --color-lime: var(--appearance-lime);
-  --color-lime-strong: var(--appearance-lime-strong);
   --color-peach: var(--appearance-peach);
   --color-peach-fill: var(--appearance-peach-fill);
+  --color-danger: var(--appearance-danger);
   --color-prompt-stack: var(--appearance-prompt-stack);
   --color-prompt-stack-accent: var(--appearance-prompt-stack-accent);
   --color-prompt-border: var(--appearance-prompt-border);

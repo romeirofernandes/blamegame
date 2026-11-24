@@ -45,15 +45,21 @@ export function Tap({ children, className = '', ...props }: TapProps) {
 
 export type ButtonProps = Omit<TapProps, 'children' | 'className'> & {
   children: ReactNode;
-  tone?: 'primary' | 'secondary' | 'quiet';
+  tone?: 'primary' | 'secondary' | 'quiet' | 'danger';
   arrow?: boolean;
   className?: string;
 };
 
 export function Button({ children, onPress, tone = 'primary', disabled, arrow = true, className = '', label, ...props }: ButtonProps) {
   const { colors: palette } = useAppearance();
-  const background = tone === 'primary' ? 'bg-lime' : 'border border-line bg-panel';
-  const color = tone === 'primary' ? palette.ink : tone === 'secondary' ? palette.cloud : palette.muted;
+  const background = tone === 'primary'
+    ? 'border border-ink bg-lime'
+    : tone === 'danger'
+      ? 'border border-ink bg-danger'
+      : 'border border-line bg-panel';
+  const color = tone === 'primary' ? palette.ink
+    : tone === 'danger' ? palette.dangerForeground
+    : tone === 'secondary' ? palette.cloud : palette.muted;
   const textChild = typeof children === 'string' || typeof children === 'number';
   return (
     <Tap {...props} label={label ?? (textChild ? String(children) : undefined)} onPress={onPress} disabled={disabled} className={className}>
@@ -101,7 +107,7 @@ export function PresenceAvatar({ player }: {
     <View aria-hidden className="relative">
       <Avatar player={player} />
       <View
-        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-panel ${player.online === false ? 'bg-peach' : 'bg-lime-strong'}`}
+        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 ${player.online === false ? 'border-panel bg-peach' : 'border-ink bg-lime'}`}
       />
     </View>
   );

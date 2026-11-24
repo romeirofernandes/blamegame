@@ -232,7 +232,7 @@ export function CommunityScreen({
       </Tabs>
 
       {!!libraryError && <Body accessibilityRole="alert" className="text-sm text-peach">{libraryError}</Body>}
-      {!!notice && <Body accessibilityRole="status" className="text-sm text-lime-strong">{notice}</Body>}
+      {!!notice && <Body accessibilityRole="status" className="text-sm text-cloud">{notice}</Body>}
       {!!error && <Body accessibilityRole="alert" className="text-sm text-peach">{error}</Body>}
 
       {section === 'browse' ? (

@@ -52,7 +52,7 @@ export function GameSwitch({
 }: GameSwitchProps) {
   const { colors, theme } = useAppearance();
   const { play } = useSoundEffects();
-  const activeTrack = theme === 'light' ? colors.limeStrong : colors.lime;
+  const activeTrack = colors.lime;
   const reducedMotion = useReducedMotionPreference();
   const animate = !reducedMotion;
   const direction = I18nManager.isRTL ? -1 : 1;
@@ -116,7 +116,13 @@ export function GameSwitch({
       }}
     >
       <Animated.View
-        style={[styles.track, { width: SIZE.width, height: SIZE.height, borderRadius: SIZE.height / 2 }, trackStyle]}
+        style={[styles.track, {
+          width: SIZE.width,
+          height: SIZE.height,
+          borderRadius: SIZE.height / 2,
+          borderColor: colors.ink,
+          borderWidth: theme === 'light' && value ? 1 : 0,
+        }, trackStyle]}
       >
         <Animated.View
           style={[
@@ -125,7 +131,7 @@ export function GameSwitch({
               start: SIZE.padding,
               height: SIZE.thumb,
               borderRadius: SIZE.thumb / 2,
-              backgroundColor: '#fff',
+              backgroundColor: colors.ink,
             },
             thumbStyle,
           ]}

@@ -154,7 +154,7 @@ export function AccountScreen({ forPlay, onAuthenticated }: AccountScreenProps) 
             <Body accessibilityRole="alert" className="text-peach">{error}</Body>
           </Surface>
         )}
-        <Button tone="secondary" arrow={false} onPress={() => void run('signout')} disabled={busy}>
+        <Button tone="danger" arrow={false} onPress={() => void run('signout')} disabled={busy}>
           {busy ? 'Signing out…' : 'Sign out'}
         </Button>
       </View>
@@ -256,7 +256,7 @@ export function AccountScreen({ forPlay, onAuthenticated }: AccountScreenProps) 
           {busy ? 'Connecting…' : isGuest ? 'Save account' : mode === 'signup' ? 'Create account' : 'Sign in'}
         </Button>
         {isGuest && (
-          <Button tone="secondary" arrow={false} onPress={() => void run('signout')} disabled={busy}>
+          <Button tone="danger" arrow={false} onPress={() => void run('signout')} disabled={busy}>
             {busy ? 'Updating account…' : 'Sign out'}
           </Button>
         )}

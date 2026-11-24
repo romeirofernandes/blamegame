@@ -73,7 +73,7 @@ export function CustomDecks({ saved, loaded, saveDecks, onHost }: {
               <Button onPress={() => onHost(deck)} label={`Host with ${deck.name}`}>Host with deck</Button>
             </View>
           ))}
-          <Button tone="secondary" disabled={!loaded || saved.length >= MAX_LOCAL_DECKS} onPress={() => edit(saved.length)}>Create a deck</Button>
+          <Button disabled={!loaded || saved.length >= MAX_LOCAL_DECKS} onPress={() => edit(saved.length)}>Create a deck</Button>
           {saved.length >= MAX_LOCAL_DECKS && <Body className="text-sm text-muted">You can save up to {MAX_LOCAL_DECKS} decks on this device.</Body>}
         </>
       ) : (
@@ -94,7 +94,7 @@ export function CustomDecks({ saved, loaded, saveDecks, onHost }: {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {coverOptions.map((option) => (
               <Tap key={option} label={CUSTOM_COVERS[option]} selected={option === cover} onPress={() => setCover(option)}
-                className={`items-center border ${option === cover ? 'border-lime-strong bg-lime/40' : 'border-line'}`}
+                className={`items-center border ${option === cover ? 'border-ink bg-lime/40' : 'border-line'}`}
                 style={{ width: 62, height: 62 }}>
                 <Image source={deckArt[option]} resizeMode="contain" style={{ width: 46, height: 46 }} accessible={false} />
               </Tap>

@@ -17,9 +17,10 @@ export type AppearanceColors = {
   lilac: string;
   lilacStrong: string;
   lime: string;
-  limeStrong: string;
   peach: string;
   peachFill: string;
+  danger: string;
+  dangerForeground: string;
   promptStack: string;
   promptStackAccent: string;
   promptBorder: string;
@@ -39,9 +40,10 @@ const palettes: Record<AppearanceTheme, AppearanceColors> = {
     lilac: '#e7dcf5',
     lilacStrong: '#684b96',
     lime: '#e2fc67',
-    limeStrong: '#536312',
     peach: '#9b4934',
     peachFill: '#ffb199',
+    danger: '#b42318',
+    dangerForeground: '#ffffff',
     promptStack: '#eee7f7',
     promptStackAccent: '#c8adff',
     promptBorder: '#8675af',
@@ -57,9 +59,10 @@ const palettes: Record<AppearanceTheme, AppearanceColors> = {
     lilac: '#c8adff',
     lilacStrong: '#c8adff',
     lime: '#e2fc67',
-    limeStrong: '#e2fc67',
     peach: '#ffb199',
     peachFill: '#ffb199',
+    danger: '#f87171',
+    dangerForeground: '#15131d',
     promptStack: '#302548',
     promptStackAccent: '#8e71cc',
     promptBorder: '#8675af',

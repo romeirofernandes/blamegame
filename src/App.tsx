@@ -195,7 +195,7 @@ function GameApp() {
               ) : <BrandMark color={colors.cloud} />}
               {room ? (
                 <View className="flex-row items-center gap-2 rounded-full border border-line px-3 py-2">
-                  <View className={`size-1.5 rounded-full ${(demo || online.connected) ? 'bg-lime-strong' : 'bg-peach-fill'}`} />
+                  <View className={`size-2 rounded-full border border-ink ${(demo || online.connected) ? 'bg-lime' : 'bg-peach-fill'}`} />
                   <Label className="tracking-[1px]">{(demo || online.connected) ? `Room ${room.code}` : 'Reconnecting'}</Label>
                 </View>
               ) : showTabs && destination === 'play' ? (
@@ -276,9 +276,9 @@ function GameApp() {
                         onPress={() => void signOutFromSettings()}
                         disabled={loading || signOutBusy}
                       >
-                        <View className="min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] bg-peach-fill px-4 py-3">
-                          <HugeiconsIcon icon={LogOutIcon} color={colors.ink} size={20} strokeWidth={1.9} />
-                          <Text className="font-boldface text-base text-ink">
+                        <View className="min-h-14 flex-row items-center justify-center gap-2 rounded-[18px] border border-ink bg-danger px-4 py-3">
+                          <HugeiconsIcon icon={LogOutIcon} color={colors.dangerForeground} size={20} strokeWidth={1.9} />
+                          <Text className="font-boldface text-base" style={{ color: colors.dangerForeground }}>
                             {signOutBusy ? 'Signing out…' : 'Sign out'}
                           </Text>
                         </View>
@@ -312,7 +312,7 @@ function GameApp() {
                   if (next) setRoundCount((count) => Math.min(count, next.cards.length));
                 }} />
                 <View className="gap-2.5 pt-6">
-                  <Button className="border border-ink" onPress={() => { setCustomDeck(selectedLocalIndex >= 0 ? deckLibrary.localDecks[selectedLocalIndex] : undefined); setRoundCount((count) => Math.min(count, selectedDeck.cards.length)); navigate('host'); }}>Host a game</Button>
+                  <Button onPress={() => { setCustomDeck(selectedLocalIndex >= 0 ? deckLibrary.localDecks[selectedLocalIndex] : undefined); setRoundCount((count) => Math.min(count, selectedDeck.cards.length)); navigate('host'); }}>Host a game</Button>
                   <Button tone="secondary" onPress={() => navigate('join')} arrow={false}>Join with a code</Button>
                   <Tap label="How to play" onPress={() => { setGuideIndex(0); navigate('guide'); }} className="min-h-12 rounded-full">
                     <Text className="text-center font-boldface text-sm text-lilac-strong">How to play</Text>
@@ -553,7 +553,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
             <PresenceAvatar player={player} />
             <Body className="flex-1">{player.name}{player.id === room.me ? ' (you)' : ''}</Body>
             {player.online === false && <Label>Reconnecting</Label>}
-            {player.id === room.host && <Label className="text-lime-strong">Host</Label>}
+            {player.id === room.host && <Label className="text-cloud">Host</Label>}
           </Surface>
         ))}
       </View>

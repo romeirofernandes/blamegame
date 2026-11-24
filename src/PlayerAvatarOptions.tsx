@@ -235,7 +235,7 @@ export function PlayerAvatarOptions({ seed, avatar, hasPhoto, avatarVariant, mod
                           disabled={busy}
                           style={{ flex: 1 }}
                         >
-                          <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }} className={`rounded-[16px] border-2 ${selected ? 'border-lime-strong bg-lime/40' : 'border-transparent bg-panel'}`}>
+                          <View style={{ minHeight: 72, alignItems: 'center', justifyContent: 'center' }} className={`rounded-[16px] border-2 ${selected ? 'border-ink bg-lime/40' : 'border-transparent bg-panel'}`}>
                             <Avatar player={{ id: seed, avatarVariant: variant }} size={48} />
                           </View>
                         </Tap>
