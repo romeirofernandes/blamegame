@@ -24,6 +24,7 @@ export function usePlayerAvatar(uid: string | undefined) {
     photo?: string;
     avatarSeed: string;
     avatarVariant: number;
+    avatarCustom: boolean;
     mode: AvatarMode;
   }>();
   const photoKey = uid ? `blame-game-avatar:${uid}` : null;
@@ -46,11 +47,12 @@ export function usePlayerAvatar(uid: string | undefined) {
       const avatarVariant = Number.isInteger(parsedVariant) && parsedVariant >= 0 && parsedVariant < DITHER_AVATAR_VARIANT_COUNT
         ? parsedVariant
         : 0;
+      const avatarCustom = storedVariant != null && avatarVariant === parsedVariant;
       const photo = validatePlayerAvatar(storedPhoto);
       const mode: AvatarMode = storedMode !== 'generated' && photo ? 'photo' : 'generated';
-      if (active) setSaved({ uid, photo, avatarSeed, avatarVariant, mode });
+      if (active) setSaved({ uid, photo, avatarSeed, avatarVariant, avatarCustom, mode });
     }).catch(() => {
-      if (active) setSaved({ uid, avatarSeed: newAvatarSeed(), avatarVariant: 0, mode: 'generated' });
+      if (active) setSaved({ uid, avatarSeed: newAvatarSeed(), avatarVariant: 0, avatarCustom: false, mode: 'generated' });
     });
     return () => { active = false; };
   }, [modeKey, photoKey, seedKey, uid, variantKey]);
@@ -61,6 +63,7 @@ export function usePlayerAvatar(uid: string | undefined) {
     hasPhoto: Boolean(profile?.photo),
     avatarSeed: profile?.avatarSeed,
     avatarVariant: profile?.avatarVariant ?? 0,
+    avatarCustom: profile?.avatarCustom ?? false,
     mode: profile?.mode ?? 'generated' as AvatarMode,
     ready: !uid || !!profile,
     async update(avatar: string | undefined) {
@@ -78,7 +81,7 @@ export function usePlayerAvatar(uid: string | undefined) {
       }
       await AsyncStorage.setItem(variantKey, String(avatarVariant));
       await AsyncStorage.setItem(modeKey, 'generated');
-      setSaved((current) => current?.uid === uid ? { ...current, avatarVariant, mode: 'generated' } : current);
+      setSaved((current) => current?.uid === uid ? { ...current, avatarVariant, avatarCustom: true, mode: 'generated' } : current);
     },
     async useSavedPhoto() {
       if (!modeKey || !uid || !saved?.photo) return;

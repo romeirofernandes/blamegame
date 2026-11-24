@@ -50,8 +50,9 @@ const legacyPrompts = [
   ],
 ];
 
-function started(mode: Mode, deckId = 'group-chat', allowSelfVote = false) {
-  const room = createRoom('ABCDE', 'host', 'Maya', deckId, mode, allowSelfVote, undefined, undefined, undefined, 5, () => 0);
+function started(mode: Mode, deckId = 'group-chat', allowSelfVote = false, allowPass = true) {
+  const room = createRoom('ABCDE', 'host', 'Maya', deckId, mode, allowSelfVote, undefined, undefined, undefined,
+    5, () => 0, undefined, false, allowPass);
   addPlayer(room, 'guest-one', 'Jules');
   addPlayer(room, 'guest-two', 'Sam');
   applyAction(room, 'host', { type: 'start' });
@@ -85,10 +86,20 @@ for (const mode of ['anonymous', 'named'] as const) {
     const text = 'The world’s largest stack of pancakes.';
     applyAction(spotlight, 'guest-two', { type: 'submit', round: 1, submission: { kind: 'write', value: text } });
     expect(JSON.stringify(viewRoom(spotlight, 'host'))).not.toContain(text);
-    applyAction(spotlight, 'host', { type: 'reveal' });
-    expect(viewRoom(spotlight, 'host').result?.answers).toEqual([
-      mode === 'anonymous' ? { text } : { text, author: 'guest-two' },
-    ]);
+    applyAction(spotlight, 'host', { type: 'submit', round: 1, submission: { kind: 'write', value: 'A different answer.' } });
+    applyAction(spotlight, 'guest-one', { type: 'submit', round: 1, submission: { kind: 'write', value: 'One more answer.' } });
+    const ballot = viewRoom(spotlight, 'host');
+    expect(ballot.phase).toBe('vote');
+    expect(ballot.answerOptions?.every((option) => !('author' in option))).toBe(true);
+    expect(ballot.answerOptions?.find((option) => option.isOwn)?.text).toBe('A different answer.');
+    for (const id of ['host', 'guest-one', 'guest-two']) {
+      const option = viewRoom(spotlight, id).answerOptions!.find((answer) => !answer.isOwn)!;
+      applyAction(spotlight, id, { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: option.id } });
+    }
+    expect(viewRoom(spotlight, 'host').result?.answers).toHaveLength(3);
+    expect(viewRoom(spotlight, 'host').result?.answers).toContainEqual(
+      expect.objectContaining({ text, author: 'guest-two', count: expect.any(Number), voters: expect.any(Array) }),
+    );
   });
 }
 
@@ -153,21 +164,28 @@ test('recap keeps tied vote counts and shares write answers with the room attrib
   addPlayer(writes, 'one', 'Jules');
   addPlayer(writes, 'two', 'Sam');
   applyAction(writes, 'host', { type: 'start' });
-  applyAction(writes, 'one', { type: 'submit', round: 1, submission: { kind: 'write', value: 'A tiny parade.' } });
-  applyAction(writes, 'host', { type: 'reveal' });
+  for (const [id, value] of [['host', 'A tiny parade.'], ['one', 'A second parade.'], ['two', 'A third parade.']]) {
+    applyAction(writes, id, { type: 'submit', round: 1, submission: { kind: 'write', value } });
+  }
+  for (const id of ['host', 'one', 'two']) {
+    const option = viewRoom(writes, id).answerOptions!.find((answer) => !answer.isOwn)!;
+    applyAction(writes, id, { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: option.id } });
+  }
   applyAction(writes, 'host', { type: 'next' });
-  expect(viewRoom(writes, 'host').recap?.[0]).toMatchObject({
-    kind: 'write', leaders: [], answers: [{ text: 'A tiny parade.' }],
-  });
+  const writeRecap = viewRoom(writes, 'host').recap?.[0];
+  expect(writeRecap).toMatchObject({ kind: 'write', leaders: [] });
+  expect(writeRecap?.answers).toContainEqual(
+    expect.objectContaining({ text: 'A tiny parade.', author: 'host', count: 0, voters: [] }),
+  );
 
-  const passed = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined, undefined, 1, () => 0);
+  const passed = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined,
+    undefined, 1, () => 0, undefined, false, true);
   addPlayer(passed, 'one', 'Jules');
   addPlayer(passed, 'two', 'Sam');
   applyAction(passed, 'host', { type: 'start' });
   for (const id of ['host', 'one', 'two']) {
     applyAction(passed, id, { type: 'submit', round: 1, submission: { kind: 'pass' } });
   }
-  applyAction(passed, 'host', { type: 'reveal' });
   applyAction(passed, 'host', { type: 'next' });
   expect(viewRoom(passed, 'host').recap?.[0]).toMatchObject({
     kind: 'pick', leaders: [], responseCount: 3, passCount: 3,
@@ -185,8 +203,7 @@ test('demo friends do not cast self votes when self-voting is disabled', () => {
       ? { kind: 'pick' as const, value: room.players.find((player) => player.id !== DEMO_PLAYER)!.id }
       : { kind: 'write' as const, value: 'A short demo answer.' };
     room = demoAction(room, { type: 'submit', round, submission });
-    expect(viewRoom(room, DEMO_PLAYER).submitted).toBe(room.players.length);
-    room = demoAction(room, { type: 'reveal' });
+    expect(viewRoom(room, DEMO_PLAYER)).toMatchObject({ phase: 'reveal', submitted: room.players.length });
     room = demoAction(room, { type: 'next' });
   }
 });
@@ -201,8 +218,12 @@ test('the spotlight demo answers every selected write prompt deterministically',
       type: 'submit', round,
       submission: { kind: 'write', value: 'A demo answer.' },
     });
-    expect(viewRoom(room, DEMO_PLAYER).submitted).toBe(room.players.length);
-    room = demoAction(room, { type: 'reveal' });
+    const ballot = viewRoom(room, DEMO_PLAYER);
+    expect(ballot.phase).toBe('vote');
+    expect(ballot.answerOptions).toHaveLength(room.players.length);
+    const option = ballot.answerOptions!.find((answer) => !answer.isOwn)!;
+    room = demoAction(room, { type: 'submit', round, submission: { kind: 'answer-vote', value: option.id } });
+    expect(viewRoom(room, DEMO_PLAYER).phase).toBe('reveal');
     expect(viewRoom(room, DEMO_PLAYER).result?.answers).toHaveLength(room.players.length);
     room = demoAction(room, { type: 'next' });
   }
@@ -222,7 +243,8 @@ test('each deck has 50 distinct prompts that preserve its pick or write format',
 });
 
 test('a room draws its chosen number of prompts without repeats and ends on that round', () => {
-  const room = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined, undefined, 13, () => 0);
+  const room = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous', false, undefined, undefined,
+    undefined, 13, () => 0, undefined, false, true);
   addPlayer(room, 'guest-one', 'Jules');
   addPlayer(room, 'guest-two', 'Sam');
   applyAction(room, 'host', { type: 'start' });
@@ -270,4 +292,122 @@ test('generated avatar seeds and variants are retained and validated', () => {
   const invalid = createRoom('FGHIJ', 'host-two', 'Maya', 'group-chat', 'anonymous', false, undefined, 12, 'not-a-seed');
   expect(invalid.players[0]).not.toHaveProperty('avatarVariant');
   expect(invalid.players[0]).not.toHaveProperty('avatarSeed');
+});
+
+test('passing is disabled for new rooms by default and remains enabled for legacy rooms', () => {
+  const current = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous');
+  addPlayer(current, 'one', 'Jules');
+  addPlayer(current, 'two', 'Sam');
+  applyAction(current, 'host', { type: 'start' });
+  expect(viewRoom(current, 'host').allowPass).toBe(false);
+  expect(() => applyAction(current, 'host', { type: 'submit', round: 1, submission: { kind: 'pass' } }))
+    .toThrow('Passing is not allowed');
+  expect(viewRoom(current, 'host').submitted).toBe(0);
+
+  delete current.allowPass;
+  applyAction(current, 'host', { type: 'submit', round: 1, submission: { kind: 'pass' } });
+  expect(viewRoom(current, 'host').allowPass).toBe(true);
+  expect(viewRoom(current, 'host').submitted).toBe(1);
+});
+
+test('pick rounds reveal automatically when every participant submits', () => {
+  const room = createRoom('ABCDE', 'host', 'Maya', 'group-chat', 'anonymous');
+  addPlayer(room, 'one', 'Jules');
+  addPlayer(room, 'two', 'Sam');
+  applyAction(room, 'host', { type: 'start' });
+
+  for (const [voter, target] of [['host', 'one'], ['one', 'two'], ['two', 'one']]) {
+    applyAction(room, voter, { type: 'submit', round: 1, submission: { kind: 'pick', value: target } });
+  }
+
+  expect(viewRoom(room, 'host')).toMatchObject({ phase: 'reveal', submitted: 3, canReveal: false });
+  expect(viewRoom(room, 'host').result?.picks).toEqual([
+    { playerId: 'one', count: 2 }, { playerId: 'two', count: 1 },
+  ]);
+  expect(() => applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'pick', value: 'two' } }))
+    .toThrow('round is closed');
+});
+
+test('Right Answers hides authors until ballots are complete and then reveals vote attribution', () => {
+  const room = createRoom('ABCDE', 'host', 'Maya', 'spotlight', 'anonymous', false, undefined, undefined,
+    undefined, 1, () => 0);
+  addPlayer(room, 'one', 'Jules');
+  addPlayer(room, 'two', 'Sam');
+  applyAction(room, 'host', { type: 'start' });
+  expect(viewRoom(room, 'host').phase).toBe('answer');
+  expect(() => applyAction(room, 'host', { type: 'reveal' })).toThrow('unavailable');
+
+  for (const [id, value] of [['host', 'Mangoes.'], ['one', 'Pineapples.'], ['two', 'Peaches.']]) {
+    applyAction(room, id, { type: 'submit', round: 1, submission: { kind: 'write', value } });
+  }
+
+  expect(viewRoom(room, 'host')).toMatchObject({ phase: 'vote', submitted: 0, hasSubmitted: false });
+  for (const id of ['host', 'one', 'two']) {
+    const options = viewRoom(room, id).answerOptions!;
+    expect(options).toHaveLength(3);
+    expect(options.filter((option) => option.isOwn)).toHaveLength(1);
+    expect(options.every((option) => !('author' in option))).toBe(true);
+  }
+  const round = room.rounds.at(-1)!;
+  const optionFor = (author: string) => round.answerOptions!.find((option) => option.author === author)!.id;
+  expect(() => applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: optionFor('host') } }))
+    .toThrow("your own answer");
+  expect(() => applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'pass' } }))
+    .toThrow('skip voting');
+  expect(viewRoom(room, 'host').submitted).toBe(0);
+
+  applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: optionFor('one') } });
+  applyAction(room, 'one', { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: optionFor('host') } });
+  expect(viewRoom(room, 'host').phase).toBe('vote');
+  applyAction(room, 'two', { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: optionFor('host') } });
+
+  expect(viewRoom(room, 'host').phase).toBe('reveal');
+  expect(viewRoom(room, 'host').result?.answers).toContainEqual({
+    id: optionFor('host'), text: 'Mangoes.', author: 'host', count: 2, voters: ['one', 'two'],
+  });
+});
+
+test('Right Answers lets the host recover blocked ballots and skips voting when nobody wrote an answer', () => {
+  const blocked = createRoom('ABCDE', 'host', 'Maya', 'spotlight', 'anonymous', false, undefined, undefined,
+    undefined, 1, () => 0);
+  addPlayer(blocked, 'one', 'Jules');
+  addPlayer(blocked, 'two', 'Sam');
+  applyAction(blocked, 'host', { type: 'start' });
+  applyAction(blocked, 'host', { type: 'submit', round: 1, submission: { kind: 'write', value: 'Only answer.' } });
+  const onlineHost = new Set(['host']);
+  applyAction(blocked, 'host', { type: 'reveal' }, onlineHost);
+  expect(viewRoom(blocked, 'host')).toMatchObject({ phase: 'vote', canReveal: true, answerOptions: [{ isOwn: true }] });
+  applyAction(blocked, 'host', { type: 'reveal' }, onlineHost);
+  expect(viewRoom(blocked, 'host').result?.answers).toEqual([
+    expect.objectContaining({ text: 'Only answer.', author: 'host', count: 0, voters: [] }),
+  ]);
+
+  const empty = createRoom('FGHIJ', 'host', 'Maya', 'spotlight', 'anonymous', false, undefined, undefined,
+    undefined, 1, () => 0, undefined, false, true);
+  addPlayer(empty, 'one', 'Jules');
+  addPlayer(empty, 'two', 'Sam');
+  applyAction(empty, 'host', { type: 'start' });
+  for (const id of ['host', 'one', 'two']) {
+    applyAction(empty, id, { type: 'submit', round: 1, submission: { kind: 'pass' } });
+  }
+  expect(viewRoom(empty, 'host')).toMatchObject({ phase: 'reveal', result: { picks: [], answers: [] } });
+});
+
+test('answer ballot pass uses its own action kind and counts toward automatic reveal', () => {
+  const room = createRoom('ABCDE', 'host', 'Maya', 'spotlight', 'anonymous', false, undefined, undefined,
+    undefined, 1, () => 0, undefined, false, true);
+  addPlayer(room, 'one', 'Jules');
+  addPlayer(room, 'two', 'Sam');
+  applyAction(room, 'host', { type: 'start' });
+  for (const [id, value] of [['host', 'Mangoes.'], ['one', 'Pineapples.'], ['two', 'Peaches.']]) {
+    applyAction(room, id, { type: 'submit', round: 1, submission: { kind: 'write', value } });
+  }
+  expect(() => applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'pass' } }))
+    .toThrow('skip voting');
+  applyAction(room, 'host', { type: 'submit', round: 1, submission: { kind: 'answer-vote-pass' } });
+  for (const id of ['one', 'two']) {
+    const option = viewRoom(room, id).answerOptions!.find((item) => !item.isOwn)!;
+    applyAction(room, id, { type: 'submit', round: 1, submission: { kind: 'answer-vote', value: option.id } });
+  }
+  expect(viewRoom(room, 'host').phase).toBe('reveal');
 });

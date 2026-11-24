@@ -1,6 +1,6 @@
 # Blame Game
 
-a party game for 3–12 friends. pick a deck, vote for who fits the prompt, and let the host reveal where everyone landed. Spotlight is for written answers.
+a party game for 3–12 friends. pick a deck and vote for who fits the prompt. in Spotlight, write an answer and vote for your favorite from the anonymous options. the results come up when everyone locks in.
 
 <p>
   <img src="docs/screenshots/play-dark.png" alt="Play screen in dark mode" width="260">

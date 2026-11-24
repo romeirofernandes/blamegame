@@ -11,6 +11,9 @@ import { useAppearance } from './appearance';
 import type { Action, RoomView } from './game';
 import { Body, Button, Field, hapticSelect, Label, PresenceAvatar, PromptCard, Surface, Tap, Title } from './ui';
 
+const selectedRow = 'border-ink bg-lime';
+const unselectedRow = 'border-line bg-panel';
+
 export function RoundScreen({ room, host, act, leave, disabled }: {
   room: RoomView;
   host: boolean;
@@ -26,6 +29,11 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
   const recapDeck = room.customDeck ? getDeck(room.customDeck.cover) : getDeck(room.deckId);
   const recapColor = recapDeck && 'color' in recapDeck ? recapDeck.color : '#c8adff';
   const card = room.card!;
+  const answerOptions = room.answerOptions;
+  const collectingAnswers = room.phase === 'answer';
+  const writing = card.kind === 'write' && !answerOptions;
+  const answerVoting = card.kind === 'write' && !!answerOptions;
+  const selected = writing ? answer.trim() : choice;
   const offlineCount = room.players.filter((person) => person.online === false).length;
 
   useEffect(() => {
@@ -37,7 +45,9 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
     setCommitting(true);
     act({
       type: 'submit', round: room.round,
-      submission: pass ? { kind: 'pass' } : { kind: card.kind, value: card.kind === 'pick' ? choice : answer },
+      submission: pass
+        ? { kind: answerVoting ? 'answer-vote-pass' : 'pass' }
+        : { kind: answerVoting ? 'answer-vote' : card.kind, value: selected },
     });
   }
 
@@ -60,10 +70,10 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
       <View className="gap-3">
         <View className="flex-row flex-wrap items-center justify-between gap-2">
           <Label className="tracking-[1px] text-lilac-strong">{deck.name} · Round {room.round}/{room.total}</Label>
-          <View className="flex-row items-center gap-1.5">
+          {card.kind === 'pick' && <View className="flex-row items-center gap-1.5">
             <HugeiconsIcon icon={room.mode === 'anonymous' ? LockKeyIcon : EyeIcon} color={colors.muted} size={15} />
             <Label className="tracking-[1px]">{room.mode}</Label>
-          </View>
+          </View>}
         </View>
         <View className="flex-row gap-1.5" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {Array.from({ length: room.total }, (_, index) => (
@@ -72,7 +82,7 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
         </View>
       </View>
 
-      <PromptCard question={card.question} color={'color' in deck ? deck.color : undefined} label={card.kind === 'pick' ? 'Most likely to' : 'Spotlight round'} />
+      <PromptCard question={card.question} color={'color' in deck ? deck.color : undefined} label={card.kind === 'pick' ? 'Most likely to' : 'Right Answers'} />
 
       {room.phase === 'reveal' ? (
         <View className="shrink-0 gap-5">
@@ -85,9 +95,9 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
         <View className="gap-4">
           {room.hasSubmitted ? (
             <Surface className="gap-2 p-5">
-              <Check size={28} color={colors.limeStrong} strokeWidth={2} />
+              <Check size={28} color={colors.cloud} strokeWidth={2} />
               <Title className="text-[34px] leading-[36px]" accessibilityLiveRegion="polite">Locked in.</Title>
-              <Body className="text-muted">Answers stay sealed until the reveal.</Body>
+              <Body className="text-muted">{collectingAnswers ? 'Voting starts when the answers are in.' : 'Responses stay sealed until the reveal.'}</Body>
             </Surface>
           ) : (
             <>
@@ -96,13 +106,28 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
                   <Label>Pick one person</Label>
                   {room.players.filter((person) => room.allowSelfVote || person.id !== room.me).map((person) => (
                     <Tap key={person.id} label={`${person.name}${person.id === room.me ? ' (you)' : ''}${person.online === false ? ' (offline)' : ''}`} selected={choice === person.id} onPress={() => { hapticSelect(); setChoice(person.id); }} disabled={disabled}>
-                      <View className={`flex-row items-center gap-3 rounded-[16px] border px-3 py-2.5 ${choice === person.id ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
+                      <View className={`flex-row items-center gap-3 rounded-[16px] border px-3 py-2.5 ${choice === person.id ? selectedRow : unselectedRow}`}>
                         <PresenceAvatar player={person} />
                         <View className="flex-1">
-                          <Body>{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
-                          {person.online === false && <Label className="text-peach">Offline</Label>}
+                          <Body className={choice === person.id ? 'text-ink' : undefined}>{person.name}{person.id === room.me && person.name !== 'You' ? ' (you)' : ''}</Body>
+                          {person.online === false && <Label className={choice === person.id ? 'text-ink' : 'text-peach'}>Offline</Label>}
                         </View>
-                        {choice === person.id && <Check size={22} color={colors.limeStrong} />}
+                        {choice === person.id && <Check size={22} color={colors.ink} />}
+                      </View>
+                    </Tap>
+                  ))}
+                </View>
+              ) : answerVoting ? (
+                <View className="gap-2">
+                  <Label>Pick your favorite answer</Label>
+                  {answerOptions.map((option) => (
+                    <Tap key={option.id} label={option.isOwn ? `${option.text}, your answer` : option.text} selected={choice === option.id} onPress={() => { hapticSelect(); setChoice(option.id); }} disabled={disabled || (option.isOwn && !room.allowSelfVote)}>
+                      <View className={`min-h-12 flex-row items-center gap-3 rounded-[16px] border px-4 py-3 ${choice === option.id ? selectedRow : unselectedRow}`}>
+                        <View className="flex-1">
+                          <Body className={choice === option.id ? 'text-ink' : undefined}>{option.text}</Body>
+                          {option.isOwn && <Label className={choice === option.id ? 'text-ink' : undefined}>Your answer</Label>}
+                        </View>
+                        {choice === option.id && <Check size={22} color={colors.ink} />}
                       </View>
                     </Tap>
                   ))}
@@ -118,16 +143,19 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
                     multiline
                     editable={!disabled}
                     placeholder="A short answer works best"
-                    className="min-h-28 rounded-[18px] p-4 align-top leading-6"
                   />
                   <Label className="text-right tracking-[0px]">{answer.length}/120</Label>
                 </View>
               )}
-              <View>
-                <Button disabled={disabled || !(card.kind === 'pick' ? choice : answer.trim())} onPress={() => submit()}>
-                  {card.kind === 'pick' ? 'Lock in vote' : 'Lock in answer'}
+              <View className="gap-3">
+                <Button disabled={disabled || !selected} onPress={() => submit()}>
+                  {writing ? 'Lock in answer' : 'Lock in vote'}
                 </Button>
-                <Button disabled={disabled} tone="quiet" arrow={false} onPress={() => submit(true)}>Pass this round</Button>
+                {room.allowPass && (
+                  <Button disabled={disabled} tone="quiet" arrow={false} onPress={() => submit(true)}>
+                    {answerVoting ? 'Skip voting' : collectingAnswers ? 'Skip writing' : 'Pass this round'}
+                  </Button>
+                )}
               </View>
             </>
           )}
@@ -136,8 +164,8 @@ export function RoundScreen({ room, host, act, leave, disabled }: {
               {room.submitted} of {room.players.length} ready
               {offlineCount > 0 && ` · ${offlineCount} offline`}
             </Label>
-            {host && (room.canReveal ?? room.submitted > 0) && (
-              <Button tone={room.hasSubmitted ? 'primary' : 'secondary'} onPress={() => act({ type: 'reveal' })} disabled={disabled}>Reveal results</Button>
+            {host && room.canReveal && (
+              <Button tone="secondary" onPress={() => act({ type: 'reveal' })} disabled={disabled}>{collectingAnswers ? 'Start voting' : 'Reveal results'}</Button>
             )}
           </View>
         </View>
@@ -150,12 +178,13 @@ function Reveal({ room }: { room: RoomView }) {
   const player = (id: string) => room.players.find((person) => person.id === id)!;
   const { picks, answers } = room.result!;
   const leaders = picks.filter((pick) => pick.count === picks[0]?.count);
+  const topAnswerCount = Math.max(0, ...answers.map((answer) => answer.count ?? 0));
 
   return (
     <View className="shrink-0 gap-3">
       {!!picks.length && (
         <>
-          <Label className="text-lime-strong">{leaders.length > 1 ? 'It’s a tie' : 'Most blamed'}</Label>
+          <Label className="text-cloud">{leaders.length > 1 ? 'It’s a tie' : 'Most blamed'}</Label>
           <Title className="text-[43px] leading-[45px]">{leaders.map((pick) => player(pick.playerId).name).join(' & ')}</Title>
           <View className="gap-2">
             {picks.map((pick) => {
@@ -182,13 +211,23 @@ function Reveal({ room }: { room: RoomView }) {
       )}
       {!!answers.length && (
         <>
-          <Label className="text-lime-strong">What the room said</Label>
-          {answers.map((answer, index) => (
-            <Surface key={index} className="gap-1 p-4">
-              <Body>{answer.text}</Body>
-              {!!answer.author && <Label className="tracking-[1px] text-lilac-strong">{player(answer.author).name}</Label>}
-            </Surface>
-          ))}
+          <Label className="text-cloud">What the room said</Label>
+          {answers.map((answer, index) => {
+            const leading = topAnswerCount > 0 && answer.count === topAnswerCount;
+            const text = leading ? 'text-ink' : undefined;
+            return (
+              <Surface key={answer.id ?? index} className={`gap-1 p-4 ${leading ? 'border-ink bg-lime' : ''}`}>
+                <Body className={text}>{answer.text}</Body>
+                {(answer.author || typeof answer.count === 'number') && (
+                  <View className="flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    {!!answer.author && <Label className={text ?? 'text-lilac-strong'}>By {player(answer.author).name}</Label>}
+                    {typeof answer.count === 'number' && <Label className={text}>{answer.count} {answer.count === 1 ? 'vote' : 'votes'}</Label>}
+                  </View>
+                )}
+                {!!answer.voters?.length && <Body className={`text-sm leading-5 ${text ?? 'text-muted'}`}>Picked by {answer.voters.map((id) => player(id).name).join(', ')}</Body>}
+              </Surface>
+            );
+          })}
         </>
       )}
       {!picks.length && !answers.length && <Body className="text-muted">No responses this round.</Body>}

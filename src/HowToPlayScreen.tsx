@@ -31,7 +31,7 @@ function DeckAndRoomMock() {
       </Surface>
       <Callout>Pick a deck that fits your group. Everyone in the room plays from the same deck.</Callout>
       <View className="gap-2">
-        <View className="min-h-11 items-center justify-center rounded-[14px] bg-lime px-3">
+        <View className="min-h-11 items-center justify-center rounded-[14px] border border-ink bg-lime px-3">
           <Text className="font-boldface text-sm text-ink">Host a game</Text>
         </View>
         <View className="min-h-11 items-center justify-center rounded-[14px] border border-line bg-panel px-3">
@@ -49,23 +49,23 @@ function AnswerMock() {
       <PromptCard question={pickPrompt.question} label="Most likely to" color={sampleDeck.color} />
       <View className="gap-2">
         {['Maya', 'Jules', 'Sam'].map((name, index) => (
-          <Surface key={name} className={`rounded-[14px] border px-3 py-2.5 ${index === 1 ? 'border-lime-strong bg-lime/15' : 'border-line bg-panel'}`}>
-            <Body>{name}{index === 1 ? '  ✓' : ''}</Body>
+          <Surface key={name} className={`rounded-[14px] border px-3 py-2.5 ${index === 1 ? 'border-ink bg-lime' : 'border-line bg-panel'}`}>
+            <Body className={index === 1 ? 'text-ink' : undefined}>{name}{index === 1 ? '  ✓' : ''}</Body>
           </Surface>
         ))}
       </View>
-      <View className="min-h-11 items-center justify-center rounded-[14px] bg-lime px-3">
+      <View className="min-h-11 items-center justify-center rounded-[14px] border border-ink bg-lime px-3">
         <Text className="font-boldface text-sm text-ink">Lock in vote</Text>
       </View>
       <Callout>For “Most likely to” prompts, pick one person and lock in your vote.</Callout>
       {writePrompt && (
         <View className="gap-0">
           <Surface className="gap-2 rounded-[16px] border border-line bg-panel p-3">
-            <Label>SPOTLIGHT ROUND · YOUR ANSWER</Label>
+            <Label>RIGHT ANSWERS · YOUR ANSWER</Label>
             <Body className="rounded-[12px] border border-line bg-canvas p-3 text-muted">A short answer works best</Body>
-            <Label>Answers stay sealed until reveal</Label>
+            <Label>Voting starts when the answers are in</Label>
           </Surface>
-          <Callout>Some prompts ask for a short write-in instead. Your answer stays sealed until the host reveals the round.</Callout>
+          <Callout>In Right Answers, everyone writes a short answer, then votes for a favorite from the anonymous options.</Callout>
         </View>
       )}
     </View>
@@ -75,7 +75,7 @@ function AnswerMock() {
 function RevealMock() {
   return (
     <View className="gap-3 rounded-[24px] border border-line bg-canvas p-4">
-      <Label className="text-lime-strong">MOST BLAMED</Label>
+      <Label className="text-cloud">MOST BLAMED</Label>
       <Title className="text-[36px] leading-[40px]">Jules</Title>
       <Surface className="gap-2 rounded-[16px] border border-line bg-panel p-3">
         <View className="flex-row items-center justify-between gap-3">
@@ -84,8 +84,8 @@ function RevealMock() {
         </View>
         <View className="h-1.5 rounded-full bg-lilac" />
       </Surface>
-      <Callout>The host reveals when responses are in. You’ll see vote counts or the room’s written answers.</Callout>
-      <View className="min-h-11 items-center justify-center rounded-[14px] bg-lime px-3">
+      <Callout>Results appear when everyone locks in. Right Answers also reveals who wrote and voted for each answer.</Callout>
+      <View className="min-h-11 items-center justify-center rounded-[14px] border border-ink bg-lime px-3">
         <Text className="font-boldface text-sm text-ink">Next round</Text>
       </View>
       <Callout>The host starts the next round. After the last one, the group gets a recap of the leading picks.</Callout>
@@ -119,7 +119,7 @@ export function HowToPlayScreen({ slideIndex }: { slideIndex: number }) {
   return (
     <View className="gap-5">
       <View className="gap-2">
-        <Label className="text-lime-strong">HOW TO PLAY · {slideIndex + 1} OF {slides.length}</Label>
+        <Label className="text-cloud">HOW TO PLAY · {slideIndex + 1} OF {slides.length}</Label>
         <Title className="text-[38px] leading-display">{slide.title}</Title>
         <Body className="text-muted">{slide.description}</Body>
       </View>

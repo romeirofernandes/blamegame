@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { addPlayer, applyAction, createRoom } from '../../src/game.ts';
 import { getDeck } from '../../src/decks.ts';
+import { ditherAvatar } from '../../src/dither-avatar.ts';
 import { GameRoom } from '../src/room-hub.js';
 
 class MemoryStorage {
@@ -42,6 +43,49 @@ const command = (type, extra = {}) => JSON.stringify({ type, ...extra });
 const route = (socket, code, creating = false, authUid = crypto.randomUUID()) =>
   socket.serializeAttachment({ code, creating, authUid });
 
+test('automatic dither avatars stay distinct and keep their assignment on resume', async () => {
+  const state = new FakeState();
+  const host = new FakeSocket();
+  const guest = new FakeSocket();
+  const custom = new FakeSocket();
+  for (const socket of [host, guest, custom]) state.sockets.add(socket);
+  const hub = new GameRoom(state, {});
+  await hub.ready;
+  const code = 'ABCDE';
+  route(host, code, true);
+  route(guest, code);
+  route(custom, code);
+  const avatarSeed = 'a'.repeat(32);
+  const avatarVariant = 0;
+  const avatarKey = (player) => ditherAvatar(player.avatarSeed ?? player.id, player.avatarVariant ?? 0);
+
+  await hub.webSocketMessage(host, command('create', {
+    name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'), avatarSeed, avatarVariant,
+  }));
+  await hub.webSocketMessage(guest, command('join', {
+    name: 'Jules', code, token: token('b'), avatarSeed, avatarVariant,
+  }));
+  const hostPlayer = host.lastState().players.find((player) => player.id === host.lastState().me);
+  const guestPlayer = guest.lastState().players.find((player) => player.id === guest.lastState().me);
+  expect(avatarKey(guestPlayer)).not.toEqual(avatarKey(hostPlayer));
+
+  await hub.webSocketMessage(custom, command('join', {
+    name: 'Sam', code, token: token('c'), avatarSeed, avatarVariant, avatarCustom: true,
+  }));
+  expect(custom.lastState().players.find((player) => player.id === custom.lastState().me))
+    .toMatchObject({ avatarSeed, avatarVariant });
+
+  const guestUid = guest.attachment.authUid;
+  guest.readyState = 3;
+  await hub.webSocketClose(guest);
+  const resumed = new FakeSocket();
+  state.sockets.add(resumed);
+  route(resumed, code, false, guestUid);
+  await hub.webSocketMessage(resumed, command('resume', { code, token: token('b') }));
+  const resumedPlayer = resumed.lastState().players.find((player) => player.id === resumed.lastState().me);
+  expect(resumedPlayer).toEqual({ ...guestPlayer, online: true });
+});
+
 describe('RoomHub WebSocket protocol', () => {
   test('persists private room state and resumes the same player after hibernation', async () => {
     const validAvatar = `data:image/jpeg;base64,${Buffer.from(await readFile(new URL('./fixtures/player-avatar.jpg', import.meta.url))).toString('base64')}`;
@@ -66,6 +110,7 @@ describe('RoomHub WebSocket protocol', () => {
     await hub.webSocketMessage(guest, command('join', { name: 'Jules', code, token: token('b'), avatar: validAvatar }));
     await hub.webSocketMessage(third, command('join', { name: 'Sam', code, token: token('c'), avatar: 'data:image/png;base64,ZmFrZQ==' }));
     expect(host.lastState().allowSelfVote).toBe(false);
+    expect(host.lastState().allowPass).toBe(false);
     expect(host.lastState().players.find((player) => player.name === 'Sam').avatar).toBeUndefined();
     await hub.webSocketMessage(host, command('start'));
     await hub.webSocketMessage(guest, command('submit', {
@@ -124,10 +169,11 @@ describe('RoomHub WebSocket protocol', () => {
     route(host, 'UVWXY', true);
 
     await hub.webSocketMessage(host, command('create', {
-      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('h'), allowSelfVote: true, roundCount: 12,
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('h'),
+      allowSelfVote: true, allowPass: true, roundCount: 12,
     }));
 
-    expect(host.lastState()).toMatchObject({ allowSelfVote: true, total: 12 });
+    expect(host.lastState()).toMatchObject({ allowSelfVote: true, allowPass: true, total: 12 });
   });
 
   test('keeps the original prompt order for clients that omit roundCount', async () => {
@@ -163,6 +209,7 @@ describe('RoomHub WebSocket protocol', () => {
     applyAction(oldRoom, 'old-host', { type: 'start' });
     delete oldRoom.cards;
     delete oldRoom.totalRounds;
+    delete oldRoom.allowPass;
     const storage = new MemoryStorage();
     const oldToken = token('o');
     await storage.put('room', {
@@ -359,5 +406,83 @@ describe('RoomHub WebSocket protocol', () => {
       avatarSeed: guestAvatarSeed,
       avatarVariant: 6,
     });
+  });
+
+  test('reveals a pick round automatically when every connected player submits', async () => {
+    const state = new FakeState();
+    const [host, one, two] = [new FakeSocket(), new FakeSocket(), new FakeSocket()];
+    state.sockets.add(host);
+    state.sockets.add(one);
+    state.sockets.add(two);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'ABCDE', true);
+    route(one, 'ABCDE');
+    route(two, 'ABCDE');
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'group-chat', mode: 'anonymous', token: token('a'),
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(one, command('join', { name: 'Jules', code, token: token('b') }));
+    await hub.webSocketMessage(two, command('join', { name: 'Sam', code, token: token('c') }));
+    await hub.webSocketMessage(host, command('start'));
+    await hub.webSocketMessage(host, command('submit', { round: 1, submission: { kind: 'pick', value: one.lastState().me } }));
+    await hub.webSocketMessage(one, command('submit', { round: 1, submission: { kind: 'pick', value: host.lastState().me } }));
+    await hub.webSocketMessage(two, command('submit', { round: 1, submission: { kind: 'pick', value: host.lastState().me } }));
+
+    expect(host.lastState()).toMatchObject({ phase: 'reveal', submitted: 3, canReveal: false });
+    expect(host.lastState().result.picks).toEqual([
+      { playerId: host.lastState().me, count: 2 },
+      { playerId: one.lastState().me, count: 1 },
+    ]);
+  });
+
+  test('collects Right Answers anonymously, rejects self votes, and reveals voter attribution', async () => {
+    const state = new FakeState();
+    const [host, one, two] = [new FakeSocket(), new FakeSocket(), new FakeSocket()];
+    state.sockets.add(host);
+    state.sockets.add(one);
+    state.sockets.add(two);
+    const hub = new GameRoom(state, {});
+    await hub.ready;
+    route(host, 'FGHJK', true);
+    route(one, 'FGHJK');
+    route(two, 'FGHJK');
+
+    await hub.webSocketMessage(host, command('create', {
+      name: 'Maya', deckId: 'spotlight', mode: 'anonymous', token: token('d'), roundCount: 1,
+    }));
+    const code = host.lastState().code;
+    await hub.webSocketMessage(one, command('join', { name: 'Jules', code, token: token('e') }));
+    await hub.webSocketMessage(two, command('join', { name: 'Sam', code, token: token('f') }));
+    await hub.webSocketMessage(host, command('start'));
+    expect(host.lastState().phase).toBe('answer');
+
+    for (const [socket, value] of [[host, 'Mangoes.'], [one, 'Pineapples.'], [two, 'Peaches.']]) {
+      await hub.webSocketMessage(socket, command('submit', { round: 1, submission: { kind: 'write', value } }));
+    }
+    expect(host.lastState()).toMatchObject({ phase: 'vote', submitted: 0, hasSubmitted: false });
+    expect(host.lastState().answerOptions.every((option) => !Object.hasOwn(option, 'author'))).toBe(true);
+    expect(host.lastState().answerOptions.filter((option) => option.isOwn)).toHaveLength(1);
+
+    const ownOption = host.lastState().answerOptions.find((option) => option.isOwn);
+    await hub.webSocketMessage(host, command('submit', {
+      round: 1, submission: { kind: 'answer-vote', value: ownOption.id },
+    }));
+    expect(host.messages.at(-1)).toMatchObject({ type: 'error', message: "You can't vote for your own answer." });
+    expect(host.lastState().hasSubmitted).toBe(false);
+
+    for (const socket of [host, one, two]) {
+      const option = socket.lastState().answerOptions.find((item) => !item.isOwn);
+      await hub.webSocketMessage(socket, command('submit', {
+        round: 1, submission: { kind: 'answer-vote', value: option.id },
+      }));
+    }
+    expect(host.lastState().phase).toBe('reveal');
+    expect(host.lastState().result.picks).toEqual([]);
+    expect(host.lastState().result.answers).toContainEqual(expect.objectContaining({
+      text: 'Mangoes.', author: host.lastState().me, count: 2,
+    }));
   });
 });

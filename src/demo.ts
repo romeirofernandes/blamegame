@@ -1,4 +1,4 @@
-import { addPlayer, applyAction, createRoom, type Action, type Room } from './game';
+import { addPlayer, applyAction, createRoom, viewRoom, type Action, type Room } from './game';
 
 export const DEMO_PLAYER = 'you';
 const friends = ['Maya', 'Jules', 'Sam', 'Alex'];
@@ -42,13 +42,25 @@ export function newDemo(deckId = 'group-chat', roundCount = 10) {
 export function demoAction(room: Room, action: Action) {
   const next: Room = {
     ...room,
-    rounds: room.rounds.map((round) => ({ ...round, submissions: new Map(round.submissions) })),
+    rounds: room.rounds.map((round) => ({
+      ...round,
+      submissions: new Map(round.submissions),
+      ...(round.answerVotes && { answerVotes: new Map(round.answerVotes) }),
+    })),
   };
   applyAction(next, DEMO_PLAYER, action);
   if (action.type === 'submit') {
     const round = next.rounds.length;
     const kind = next.rounds.at(-1)!.card.kind;
     friends.forEach((name, index) => {
+      if (action.submission.kind === 'answer-vote' || action.submission.kind === 'answer-vote-pass') {
+        const options = viewRoom(next, name).answerOptions?.filter((option) => !option.isOwn);
+        if (options?.length) {
+          const option = options[(round + index) % options.length];
+          applyAction(next, name, { type: 'submit', round, submission: { kind: 'answer-vote', value: option.id } });
+        }
+        return;
+      }
       const targetIndex = (round - 1 + (index === 3 ? 1 : 0)) % friends.length;
       const pickIndex = friends[targetIndex] === name ? (targetIndex + 1) % friends.length : targetIndex;
       const value = kind === 'pick'

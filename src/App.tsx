@@ -80,7 +80,7 @@ function GameApp() {
     sample.code = 'CHAT5';
     if (preview === 'recap') {
       const voted = demoAction(sample, { type: 'submit', round: 1, submission: { kind: 'pick', value: 'Maya' } });
-      return demoAction(demoAction(voted, { type: 'reveal' }), { type: 'next' });
+      return demoAction(voted, { type: 'next' });
     }
     sample.phase = 'lobby';
     sample.rounds = [];
@@ -93,6 +93,7 @@ function GameApp() {
   const [customDeck, setCustomDeck] = useState<CustomDeck>();
   const [mode, setMode] = useState<Mode>('anonymous');
   const [allowSelfVote, setAllowSelfVote] = useState(false);
+  const [allowPass, setAllowPass] = useState(false);
   const [roundCount, setRoundCount] = useState(10);
   const scrollRef = useRef<ScrollViewInstance>(null);
   const [signOutBusy, setSignOutBusy] = useState(false);
@@ -359,19 +360,17 @@ function GameApp() {
                   placeholder="e.g. Maya" autoCorrect={false} maxLength={24} />
                 {page === 'host' && (
                   <>
-                    <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
+                    {pickRounds && <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
                       <View className="flex-1 gap-1">
-                        <Text className="font-boldface text-base text-cloud">{pickRounds ? 'Anonymous votes' : 'Anonymous answers'}</Text>
-                        <Body className="text-sm leading-5 text-muted">
-                          {pickRounds ? 'Hide who voted for whom at reveal.' : 'Hide who wrote each answer at reveal.'}
-                        </Body>
+                        <Text className="font-boldface text-base text-cloud">Anonymous votes</Text>
+                        <Body className="text-sm leading-5 text-muted">Hide who picked each person at the reveal.</Body>
                       </View>
                       <GameSwitch
-                        accessibilityLabel={pickRounds ? 'Anonymous votes' : 'Anonymous answers'}
+                        accessibilityLabel="Anonymous votes"
                         value={mode === 'anonymous'}
                         onValueChange={(anonymous) => { hapticSelect(); setMode(anonymous ? 'anonymous' : 'named'); }}
                       />
-                    </Surface>
+                    </Surface>}
                     <Surface className="gap-3 rounded-[18px] border border-line bg-panel p-4">
                       <View className="flex-row items-center justify-between gap-3">
                         <View className="flex-1 gap-1">
@@ -402,26 +401,35 @@ function GameApp() {
                         </View>
                       </View>
                     </Surface>
-                    {pickRounds && (
-                      <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
-                        <View className="flex-1 gap-1">
-                          <Text className="font-boldface text-base text-cloud">Allow self-votes</Text>
-                          <Body className="text-sm leading-5 text-muted">Let players pick themselves in voting rounds.</Body>
-                        </View>
-                        <GameSwitch
-                          accessibilityLabel="Allow self-votes"
-                          value={allowSelfVote}
-                          onValueChange={(value) => { hapticSelect(); setAllowSelfVote(value); }}
-                        />
-                      </Surface>
-                    )}
+                    <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
+                      <View className="flex-1 gap-1">
+                        <Text className="font-boldface text-base text-cloud">Allow self-votes</Text>
+                        <Body className="text-sm leading-5 text-muted">Let players vote for themselves or their own answer.</Body>
+                      </View>
+                      <GameSwitch
+                        accessibilityLabel="Allow self-votes"
+                        value={allowSelfVote}
+                        onValueChange={(value) => { hapticSelect(); setAllowSelfVote(value); }}
+                      />
+                    </Surface>
+                    <Surface className="flex-row items-center gap-3 rounded-[18px] border border-line bg-panel p-4">
+                      <View className="flex-1 gap-1">
+                        <Text className="font-boldface text-base text-cloud">Allow passing</Text>
+                        <Body className="text-sm leading-5 text-muted">Let players skip an answer or a vote.</Body>
+                      </View>
+                      <GameSwitch
+                        accessibilityLabel="Allow passing"
+                        value={allowPass}
+                        onValueChange={(value) => { hapticSelect(); setAllowPass(value); }}
+                      />
+                    </Surface>
                   </>
                 )}
                 {!online.available && <Body className="text-muted">This build has no room server, so online rooms are unavailable.</Body>}
                 <Button disabled={!online.ready || !avatarOptions.ready || !name.trim() || online.pending || (page === 'join' && code.length !== 5)}
                   onPress={() => online.send(page === 'host'
-                    ? { type: 'create', name, deckId: customDeck ? CUSTOM_DECK_ID : deck, customDeck, mode, allowSelfVote, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, roundCount }
-                    : { type: 'join', name, code, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant })}>
+                    ? { type: 'create', name, deckId: customDeck ? CUSTOM_DECK_ID : deck, customDeck, mode, allowSelfVote, allowPass, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, avatarCustom: avatarOptions.avatarCustom, roundCount }
+                    : { type: 'join', name, code, avatar: avatarOptions.avatar, avatarSeed: avatarOptions.avatarSeed, avatarVariant: avatarOptions.avatarVariant, avatarCustom: avatarOptions.avatarCustom })}>
                   {online.pending ? 'Connecting…' : page === 'host' ? 'Create room' : 'Join room'}
                 </Button>
               </View>
@@ -516,7 +524,7 @@ function Lobby({ room, host, disabled, start }: { room: RoomView; host: boolean;
     <View className="gap-6">
       <View className="flex-row items-start gap-3">
         <View className="flex-1">
-          <Label className="mb-2 text-lilac-strong">{deck.name} · {room.mode} · {room.total} {room.total === 1 ? 'round' : 'rounds'}</Label>
+          <Label className="mb-2 text-lilac-strong">{deck.name} · {room.deckId === 'spotlight' ? 'Right Answers' : room.mode} · {room.total} {room.total === 1 ? 'round' : 'rounds'}</Label>
           <Title>The lobby</Title>
           <Body className="mt-2 text-muted">Send your friends the code or invite link.</Body>
         </View>

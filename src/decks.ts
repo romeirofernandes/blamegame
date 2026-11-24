@@ -287,7 +287,7 @@ export const decks = [
     ],
   },
   {
-    id: 'spotlight', name: 'Spotlight', description: 'Write the answer only your group could give.',
+    id: 'spotlight', name: 'Spotlight', description: 'Write an answer, then vote for your favorite.',
     label: 'WRITE AN ANSWER', color: '#a7e7d8',
     cards: [
       { kind: 'write', question: 'What would {player} get unexpectedly famous for?' },

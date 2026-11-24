@@ -33,6 +33,7 @@ export function RecapCard({
   const names = new Map(room.players.map(({ id, name }) => [id, name]));
   const leaders = item.leaders.map((id) => names.get(id) ?? "A player");
   const isWrite = item.kind === "write" || item.answers !== undefined;
+  const topAnswerCount = Math.max(0, ...(item.answers ?? []).map((answer) => answer.count ?? 0));
   const art = room.customDeck?.cover ?? room.deckId;
 
   async function share() {
@@ -62,7 +63,7 @@ export function RecapCard({
         <View style={styles.promptRow}>
           <View style={styles.promptCopy}>
             <Text style={styles.promptLabel}>
-              {isWrite ? "SPOTLIGHT ROUND" : "MOST LIKELY TO"}
+              {isWrite ? "RIGHT ANSWERS" : "MOST LIKELY TO"}
             </Text>
             <Text style={styles.question}>{item.question}</Text>
           </View>
@@ -74,12 +75,20 @@ export function RecapCard({
               {item.answers.map((answer, answerIndex) => (
                 <View
                   key={`${answerIndex}-${answer.text}`}
-                  style={styles.answer}
+                  style={[styles.answer, topAnswerCount > 0 && answer.count === topAnswerCount && styles.topAnswer]}
                 >
                   <Text style={styles.answerText}>“{answer.text}”</Text>
-                  {!!answer.author && (
+                  {(!!answer.author || typeof answer.count === "number") && (
                     <Text style={styles.author}>
-                      {names.get(answer.author) ?? "A player"}
+                      {[
+                        answer.author && (names.get(answer.author) ?? "A player"),
+                        typeof answer.count === "number" && `${answer.count} ${answer.count === 1 ? "vote" : "votes"}`,
+                      ].filter(Boolean).join(" · ")}
+                    </Text>
+                  )}
+                  {!!answer.voters?.length && (
+                    <Text style={styles.author}>
+                      Picked by {answer.voters.map((id) => names.get(id) ?? "A player").join(", ")}
                     </Text>
                   )}
                 </View>
@@ -192,6 +201,7 @@ const styles = StyleSheet.create({
   },
   answerList: { gap: 7, marginTop: 2 },
   answer: { backgroundColor: "#fff8", borderRadius: 12, padding: 11, gap: 4 },
+  topAnswer: { backgroundColor: "#e2fc67" },
   answerText: {
     fontFamily: "DMSans_500Medium",
     fontSize: 15,

@@ -175,13 +175,15 @@ export class GameRoom {
       if (typeof command.name !== 'string' || !deck ||
         (command.mode !== 'anonymous' && command.mode !== 'named') ||
         (command.allowSelfVote !== undefined && typeof command.allowSelfVote !== 'boolean') ||
+        (command.allowPass !== undefined && typeof command.allowPass !== 'boolean') ||
         !Number.isInteger(roundCount) || roundCount < MIN_ROUNDS || roundCount > deck.cards.length) {
         throw new Error('Choose a deck, vote mode, and valid round count.');
       }
       const id = crypto.randomUUID();
       const room = createRoom(code, id, command.name, command.deckId, command.mode,
         command.allowSelfVote ?? false, command.avatar, command.avatarVariant, command.avatarSeed,
-        command.roundCount == null ? undefined : roundCount, Math.random, customDeck ?? undefined);
+        command.roundCount == null ? undefined : roundCount, Math.random, customDeck ?? undefined,
+        command.avatarCustom === true, command.allowPass ?? false);
       this.session = { room, tokens: new Map([[command.token, { playerId: id, authUid }]]), touched: Date.now() };
       this.attach(socket, id, authUid);
       await this.persistAndSchedule();
@@ -214,7 +216,7 @@ export class GameRoom {
       }
       if (typeof command.name !== 'string') throw new Error('Enter your name.');
       playerId = crypto.randomUUID();
-      addPlayer(this.session.room, playerId, command.name, command.avatar, command.avatarVariant, command.avatarSeed);
+      addPlayer(this.session.room, playerId, command.name, command.avatar, command.avatarVariant, command.avatarSeed, command.avatarCustom === true);
       this.session.tokens.set(command.token, { playerId, authUid });
     }
 
